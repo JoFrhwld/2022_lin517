@@ -28,5 +28,7 @@ format:
 
 editor: visual
 
+output-format: all
+
 execute:
   freeze: auto

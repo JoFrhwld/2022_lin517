@@ -2,10 +2,10 @@
 title: "Mathematical Notation"
 editor: visual
 format:
+  html: default
   pdf:
     output-file: "notation"
     output-ext: "pdf"
-  html: default
 author: "Josef Fruehwald"
 license: "CC BY-SA 4.0"
 date: "2022-8-20"
