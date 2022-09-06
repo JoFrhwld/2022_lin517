@@ -4,6 +4,7 @@ project:
 website:
   title: "Lin517: Natural Language Processing"
   sidebar:
+    collapse-level: 1
     contents:
       - section: "Resources"
         contents:
