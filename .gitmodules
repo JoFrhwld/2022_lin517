@@ -1,0 +1,6 @@
+[submodule "data_sparsity"]
+	path = data_sparsity
+	url = https://github.com/JoFrhwld/data_sparsity.git
+[submodule "notation"]
+	path = notation
+	url = https://github.com/JoFrhwld/notation.git
