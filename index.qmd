@@ -1,11 +1,10 @@
 ---
 title: "Lin517: Natural Language Processing"
+listing:
+  contents:
+    - "**/*qmd"
+  type: table
+  sort: "date"
 ---
 
-This is a Quarto website.
-
-To learn more about Quarto websites visit <https://quarto.org/docs/websites>.
-
-```{r}
-1 + 1
-```
+Course materials for Fall 2022's Natural Language Processing Course at University of Kentucky.

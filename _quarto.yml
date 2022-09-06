@@ -17,6 +17,8 @@ website:
             text: "What is NLP?"
           - href: "data_sparsity/data_sparsity.qmd"
             text: "Data Sparsity"
+  page-navigation: true
+  
 format:
   html:
     theme: materia
