@@ -1,0 +1,24 @@
+project:
+  type: website
+
+website:
+  title: "Lin517: Natural Language Processing"
+  sidebar:
+    contents:
+      - href: index.qmd
+        text: Home
+      - about.qmd
+
+format:
+  html:
+    theme: materia
+    css: styles.css
+    toc: true
+    fig-cap-location: margin
+    include-in-header: google_font.html
+    mainfont: "'Atkinson Hyperlegible', sans-serif"
+
+editor: visual
+
+execute:
+  freeze: auto
