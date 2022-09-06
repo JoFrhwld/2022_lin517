@@ -57,10 +57,10 @@ load.fontawesome()
 
 library(showtext)
 
-font_add_google("Roboto", "roboto")
+font_add_google("Atkinson Hyperlegible", "atkinson")
 showtext_auto()
 
-theme_set(theme_minimal() + theme(text = element_text(family = "roboto", size = 16)))
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
 
 
 library(gutenbergr)
