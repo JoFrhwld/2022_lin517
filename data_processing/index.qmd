@@ -67,13 +67,19 @@ for url in shelley_dict.values():
 The list `all_grams4` contains a list of every token of 4grams in these books. Let's count them up and look at the top 10 most frequent 4 word phrases Mary Shelley used in her writing!
 
 ```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-4gram
+#| tbl-cap: Top 10 4grams from Mary Shelley's Work
 from collections import Counter
 
 gram_count = Counter(all_grams4)
 top10 = gram_count.most_common(10)
 
+print("|  4gram    |  count    |")
+print("|------|------:|")
 for gram in top10:
-  print(gram)
+  print(f"| `{gram[0]}` | {gram[1]} |")
 
 ```
 
@@ -86,12 +92,12 @@ In any corpus building project, decisions need to be made about how header, foot
 -   python: [`gutenbergpy`](https://github.com/raduangelescu/gutenbergpy)
 -   R: [`gutenbergr`](https://docs.ropensci.org/gutenbergr/)
 
-Or, you might decide to leave it all in. It seems pretty clear this is the approach to the dataset they trained GPT-3 on, because if you prompt it wit the first few lines of the Project Gutenberg license, it will continue it.
+Or, you might decide to leave it all in. It seems pretty clear this is the approach to the dataset they trained GPT-3 on, because if you prompt it with the first few lines of the Project Gutenberg license, it will continue it.
 
 ::: {#fig-licenses layout-ncol="2"}
-![](assets/gut_license.png){#orig-gut}
+![](assets/gut_license.png){#orig-gut fig-alt="The original plain text Project Gutenberg license"}
 
-![](assets/gpt3_gut.png){#gpt_gut}
+![](assets/gpt3_gut.png){#gpt_gut fig-alt="The GPT3 api, which has been given the first few lines of the Project Gutenberg license, and has completed the rest."}
 
 The original Project Gutenberg License vs what GPT3 reproduces
 :::
@@ -109,3 +115,101 @@ underscore_lines = [line
 for i in range(4):
   print(" ".join(underscore_lines[i]))
 ```
+
+This, again, is something we need to decide whether or not we want to include in our corpora. For these massive language models that focus on text generation, they may *want* the model to generate markup along with the text, so they might leave it in. Some text markup that's intended to indicate prosodic patterns could be useful to leave in from a linguistic theory perspective.
+
+Either way, though, it is still a *decision* that needs to be made about the data.
+
+## Text Normalization
+
+I called the issues above "data wrangling", since it's mostly about identifying the *content* we want to be including in our modelling. But once you've done that, there are still questions about how we process data for analysis which fall under "text normalization".
+
+Consider the following sentences
+
+> The 2019 film Cats is a movie about cats. Cats appear in every scene. A cat appears in every scene \>.\<.
+
+Let's split this sentence up along whitespace, and count how many times "cats" appears.
+
+```{python}
+import re
+phrase = """The 2019 film Cats is a movie about cats. 
+Cats appear in every scene. 
+A cat appears in every scene. >.< :-)"""
+
+words = re.split("\s", phrase)
+cat_c = Counter(words)
+```
+
+```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-cats
+#| tbl-cap: frequency of "cats"
+#| tbl-colwidths: [25,25]
+
+
+print("|  word    |  count    |")
+print("|---|---:|")
+for V in cat_c.most_common():
+  if re.match("[Cc]at", V[0]):
+    print(f"{V[0]} | {V[1]}")
+
+```
+
+A very important thing to keep in mind is that our language models will treat the words in these rows as three completely separate word types.[^1] That even includes the period `.` in the second row. Some typical steps involve
+
+[^1]: At least, before we start doing fancier models that start taking into account distributional semantics.
+
+-   separating punctuation from words
+
+-   "case folding" or converting everything to lowercase.
+
+```{python}
+words2 = re.split(r"\s", phrase)
+words2 = [re.sub(r"\W", '', word) for word in words2]
+words2 = [word.lower() for word in words2]
+words2
+```
+
+```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-cats_token
+#| tbl-cap: frequency of tokenized "cats"
+cat_c2 = Counter(words2)
+print("|  word    |  count    |")
+print("|---|---:|")
+for V in cat_c2.most_common():
+  if re.match("[Cc]at", V[0]):
+    print(f"{V[0]} | {V[1]}")
+```
+
+### Challenges with speech and text
+
+-   {{< fa keyboard >}}: `$1500`
+
+    -   {{< fa bullhorn >}}: "one thousand five hundred dollars"
+
+    -   {{< fa bullhorn >}}: "fifteen hundred dollars"
+
+    -   {{< fa bullhorn >}}: "one and a half thousand dollars"
+
+    -   {{< fa bullhorn >}}: "one point five thousand dollars"
+
+### Challenges with social text
+
+A tokenizer would ideally work equally well for any of these inputs, keeping them together as tokens rather than each split up as punctuation.
+
+-   `XD`
+
+-   `>.<`
+
+-   `T.T`
+
+-   `:-)`
+
+-   `:3`
+
+-   😺
+
+## Tokenizers
