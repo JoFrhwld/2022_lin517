@@ -1,0 +1,225 @@
+---
+title: "Data Processing"
+author:
+  - name: Josef Fruehwald
+    url: https://jofrhwld.github.io/
+date: "2022-9-6"
+editor: visual
+---
+
+## Most data analysis time is spent on data wrangling
+
+Before we even get to substantive issues of "text normalization" and "tokenization", we need to also deal with basic data wrangling. For example, let's say I wanted to download 4 works from Mary Shelly from Project Gutenberg and calculate what the most common 4 word sequences in her work are, I might quickly write some code like this.
+
+```{r}
+#| echo: false
+library(reticulate)
+use_condaenv("authoring")
+```
+
+```{python}
+#| echo: true
+# python
+
+# urllib.request will download the books
+import urllib.request
+
+# using a dictionary just to show the title of books here in the code.
+shelley_dict = {"Tales and stories": "https://www.gutenberg.org/cache/epub/56665/pg56665.txt",
+                "Frankenstein" : "https://www.gutenberg.org/files/84/84-0.txt",
+                "The Last Man" : "https://www.gutenberg.org/cache/epub/18247/pg18247.txt",
+                "Mathilda" : "https://www.gutenberg.org/cache/epub/15238/pg15238.txt"}
+
+# A collector list for all of the 4 word sequences
+all_grams4 = []
+
+# Loop over every url
+for url in shelley_dict.values():
+  book_dat = urllib.request.urlopen(url)
+  
+  # this deals with the 
+  # 1. character encoding
+  # 2. trailing whitespace
+  # 3. simplistic tokenization on spaces
+  book_lines = [line.decode("utf-8-sig").strip().split(" ") 
+                for line in book_dat]
+  
+  # This flattens the list above into one long list of words
+  book_words = [word 
+                for line in book_lines 
+                  for word in line 
+                    if len(word) > 0]
+  
+  # Collector list of 4grams from just this book
+  grams4 = []
+  
+  # loop over every index postion up to 4 words short of the end.
+  for i in range(len(book_words)-4):
+    
+    # glue together 4 word sequences with "_"
+    grams4.append("_".join(book_words[i:(i+4)]))
+    
+  # Add this book's 4grams to all of the books' 4grams
+  all_grams4 += grams4
+
+```
+
+The list `all_grams4` contains a list of every token of 4grams in these books. Let's count them up and look at the top 10 most frequent 4 word phrases Mary Shelley used in her writing!
+
+```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-4gram
+#| tbl-cap: Top 10 4grams from Mary Shelley's Work
+from collections import Counter
+
+gram_count = Counter(all_grams4)
+top10 = gram_count.most_common(10)
+
+print("|  4gram    |  count    |")
+print("|------|------:|")
+for gram in top10:
+  print(f"| `{gram[0]}` | {gram[1]} |")
+
+```
+
+So, either Mary Shelly was obsessed with the `Project Gutenberg Literary Archive`, and `the terms of this` and `for the sake of`, or something else is going on.
+
+As it turns out, every plain text Project Gutenberg book has header information with a short version of the users' rights and other metadata information, and then at the end has the entirety of the Project Gutenberg License, which is written in legal language.
+
+In any corpus building project, decisions need to be made about how header, footer, and general boilerplate data like this will be treated. There are handy packages for python and R that make stripping out the legal language easy
+
+-   python: [`gutenbergpy`](https://github.com/raduangelescu/gutenbergpy)
+-   R: [`gutenbergr`](https://docs.ropensci.org/gutenbergr/)
+
+Or, you might decide to leave it all in. It seems pretty clear this is the approach to the dataset they trained GPT-3 on, because if you prompt it with the first few lines of the Project Gutenberg license, it will continue it.
+
+::: {#fig-licenses layout-ncol="2"}
+![](assets/gut_license.png){#orig-gut fig-alt="The original plain text Project Gutenberg license"}
+
+![](assets/gpt3_gut.png){#gpt_gut fig-alt="The GPT3 api, which has been given the first few lines of the Project Gutenberg license, and has completed the rest."}
+
+The original Project Gutenberg License vs what GPT3 reproduces
+:::
+
+### Markup is everywhere
+
+Setting aside the issue of headers and footers, we also need to deal with the fact that "markup" is everywhere. Even in the relatively plain text of Project Gutenberg books, they use underscores `_` to indicate italics or emphasized text.
+
+```{python}
+# python
+underscore_lines = [line 
+                      for line in book_lines 
+                        if any(["_" in word 
+                                  for word in line])]
+for i in range(4):
+  print(" ".join(underscore_lines[i]))
+```
+
+This, again, is something we need to decide whether or not we want to include in our corpora. For these massive language models that focus on text generation, they may *want* the model to generate markup along with the text, so they might leave it in. Some text markup that's intended to indicate prosodic patterns could be useful to leave in from a linguistic theory perspective.
+
+Either way, though, it is still a *decision* that needs to be made about the data.
+
+## Text Normalization
+
+I called the issues above "data wrangling", since it's mostly about identifying the *content* we want to be including in our modelling. But once you've done that, there are still questions about how we process data for analysis which fall under "text normalization".
+
+Consider the following sentences
+
+> The 2019 film Cats is a movie about cats. Cats appear in every scene. A cat appears in every scene \>.\<.
+
+Let's split this sentence up along whitespace, and count how many times "cats" appears.
+
+```{python}
+import re
+phrase = """The 2019 film Cats is a movie about cats. 
+Cats appear in every scene. 
+A cat appears in every scene. >.< :-)"""
+
+words = re.split("\s", phrase)
+cat_c = Counter(words)
+```
+
+```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-cats
+#| tbl-cap: frequency of "cats"
+#| tbl-colwidths: [25,25]
+
+
+print("|  word    |  count    |")
+print("|---|---:|")
+for V in cat_c.most_common():
+  if re.match("[Cc]at", V[0]):
+    print(f"{V[0]} | {V[1]}")
+
+```
+
+A very important thing to keep in mind is that our language models will treat the words in these rows as three completely separate word types.[^1] That even includes the period `.` in the second row. Some typical steps involve
+
+[^1]: At least, before we start doing fancier models that start taking into account distributional semantics.
+
+-   separating punctuation from words
+
+-   "case folding" or converting everything to lowercase.
+
+```{python}
+words2 = re.split(r"\s", phrase)
+words2 = [re.sub(r"\W", '', word) for word in words2]
+words2 = [word.lower() for word in words2]
+words2
+```
+
+```{python}
+#| echo: false
+#| results: asis
+#| label: tbl-cats_token
+#| tbl-cap: frequency of tokenized "cats"
+cat_c2 = Counter(words2)
+print("|  word    |  count    |")
+print("|---|---:|")
+for V in cat_c2.most_common():
+  if re.match("[Cc]at", V[0]):
+    print(f"{V[0]} | {V[1]}")
+```
+
+### Challenges with speech and text
+
+-   
+
+    {{< fa keyboard >}}: $1500
+
+    -   
+
+        {{< fa bullhorn >}}: "one thousand five hundred dollars"
+
+    -   
+
+        {{< fa bullhorn >}}: "fifteen hundred dollars"
+
+    -   
+
+        {{< fa bullhorn >}}: "one and a half thousand dollars"
+
+    -   
+
+        {{< fa bullhorn >}}: "one point five thousand dollars"
+
+### Challenges with social text
+
+A tokenizer would ideally work equally well for any of these inputs, keeping them together as tokens rather than each split up as punctuation.
+
+-   `XD`
+
+-   `>.<`
+
+-   `T.T`
+
+-   `:-)`
+
+-   `:3`
+
+-   😺
+
+## Tokenizers

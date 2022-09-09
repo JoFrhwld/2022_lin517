@@ -8,16 +8,22 @@ website:
     contents:
       - section: "Resources"
         contents:
-          - href: "reading/index.qmd"
+          - href: "resources/reading/index.qmd"
             text: "Reading a technical paper"
-          - href: "notation/index.qmd"
+          - href: "resources/notation/index.qmd"
             text: "Mathematical notation"
       - section: "Lecture Notes"
         contents: 
-          - href: "what_is_nlp/index.qmd"
+          - href: "lectures/what_is_nlp/index.qmd"
             text: "What is NLP?"
-          - href: "data_sparsity/data_sparsity.qmd"
+          - href: "lectures/data_sparsity/data_sparsity.qmd"
             text: "Data Sparsity"
+          - href: "lectures/data_processing/index.qmd"
+            text: "Data processing"
+      - section: "python sessions"
+        contents:
+          - href: "python_sessions/00_session1.qmd"
+            text: "Session 1"
   page-navigation: true
   
 format:

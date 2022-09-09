@@ -1,0 +1,231 @@
+---
+title: "Starting Python"
+editor: visual
+---
+
+# Instructions
+
+Welcome to Python!
+
+If you have never done programming before, all python is is a program that reads a text file, and executes commands contained in the text file.
+
+## It's a text file
+
+Go ahead and open the text file `fake.txt`. It contains text that is all valid python code. If you pop over to the shell and run
+
+``` bash
+python3 fake.txt
+```
+
+Python will *happily* run the code in `fake.txt`. However, I recommend we always save our python scripts with the `.py` file extension for a few reasons.
+
+1.  Everyone does it, so it'll match human expectations for people looking at your code.
+2.  Any worthwhile code editor (replit included) will decide what the text in the file is *supposed* to be based on the file extension, and trys to help you accordingly with things like
+    -   Syntax highlighting, making your code easier to read.
+    -   Autocomplete assistance (e.g. if you type an open `(`, it'll automatically insert the closing `)`.
+    -   Code suggestions. Some text editors will try to clue you with the possible names of functions your trying to type if you just type in the first few letters, and then may even try to clue you with the names of arguments to the functions.
+
+## Interacting Python
+
+There are are a bunch of different ways you can interact with python to get it to interpret your code.
+
+### Interactive Session
+
+If you go to the Shell and just run `python3` without any other arguments, it will launch the python shell, which inteprets the text you type in as python code. If you copy-paste this code into the python shell, it should print `hello world` back at you.
+
+``` python
+print("hello world")
+```
+
+To quit the python shell, run
+
+``` python
+quit()
+```
+
+### "Notebooks" (not in replit)
+
+There are a few "notebook" options out there which allow you to interleave text, like notes to yourself, or descriptions of the code, with python code chunks.
+
+You can experiment with free online notebooks by setting up an account at [Kaggle](https://www.kaggle.com/) or [Google Colab](https://colab.research.google.com/).
+
+For your local set up, I'd recommend either configuring [VS Code to run Jupyter notebooks](https://code.visualstudio.com/docs/datascience/jupyter-notebooks), or use a [Quarto document in RStudio](https://quarto.org/docs/computations/python.html) (it's not just for R!)
+
+### Scripts
+
+The primary way we'll be interacting with python inside of replit is with python "scripts," which are just text documents of code python should run, line by line.
+
+## Getting Started
+
+The python script `main.py` already has some code in it.
+
+``` python
+import numpy as np
+
+# This is a comment
+# Python won't interpret or run a line starting with #
+
+ages = np.array([40, 42, 25])
+year = np.array([2016, 2001, 2019])
+```
+
+> ### 💡 **TASK 1**
+>
+> Below this line (it doesn't matter how many new lines you add) enter this line of code **crucially without any spaces or tabs preceding it.**
+>
+> ``` python
+> print("hello world")
+> ```
+>
+> Once you've done that, hit the big green run button, and `hello world` should print out in the console.
+
+### How to see what python is doing
+
+We're going to be using the `print()` function a lot. The primary way we'll be interacting with python is via python scripts, and the only way to see what our code has done is to explicitly tell python to print the output.
+
+## Values, Variables, and Assignment
+
+Before we get into what the stuff at the very top of the script means, we're going to first cover the basics of values, variable, and assignment.
+
+### Values
+
+The main python value types are
+
+-   Numeric
+-   Character
+-   Boolean (True/False)
+
+#### Numeric Practice
+
+> ### 💡 **TASK 2**
+>
+> Calculate how many seconds and print the output by adding this line to your script.
+>
+> ``` python
+>  print(f"There are {365 * 24 * 60} minutes in a year.")
+> ```
+
+What python has done is multiplied 365 (for the number of days) by 24 (for the number of hours in a day) by 60 (for the number of minutes in an hour) to produce the number of minutes in a day.
+
+Python can do any kind of arithmetic you ask of it. For example, we can caclute what percent of a whole day one minute is by adding this line of code to our script.
+
+> ### 💡 **TASK 3**
+>
+> Calculate how many seconds and print the output by adding this line to your script.
+>
+> ``` python
+>  print(f"One minute is {(1/(24 * 60)) * 100}% of a day.")
+> ```
+
+> ### 💡 **TASK 4**
+>
+> Chapter 1 of Frankenstein has 1,780 words, and 75 of them were the word "of". Calculate what percent of words were "of" by adding this line of code to your script.
+>
+> ``` python
+> print(f"{}% of words in Chapter 1 of Franenstein were 'of'")
+> ```
+>
+> Fill in the correct mathematical formula inside the `{}`
+
+### Assignment
+
+We don't usually want to just do some calculations and then just let the values disappear when we print them, though. We'll usually want to save some values for future use. We can do that by "assigning" values to "variables."
+
+The assignment operator in python is `=`. For example we can assign the name of this class to a variable called `this_class` like so:
+
+``` python
+this_class = "Lin517"
+```
+
+> ### 💡 **TASK 5**
+>
+> Assign the value `"Lin517"` to `this_class`
+
+> ### 💡 **TASK 6**
+>
+> Print the variable `this_class`
+
+#### Important Things to Note!
+
+1.  The variable `this_class` did not exist before we did assignment! If we had asked python to print `this_class` before we did the assignment, it would have given us an error.
+2.  Variable names are case sensitive! If we tried to print `This_class` or `this_Class` or `This_Class` they would all return an error.
+3.  You can start variable names with any letter or underscore, but that's all (no numbers at the start).
+4.  After the first character, you can use any letter, number, or underscore.
+5.  No `&`, `.`, `*` or `?` are allowed.
+6.  Any text that isn't enclosed inside `" "` will be interpreted as a variable name.
+
+## Doing things with variables.
+
+Once you assign a value to a variable, it can stand in as if it *was* that variable. For example.
+
+``` python
+days_in_year    = 365
+hours_in_day    = 24
+minutes_in_hour = 60
+
+print(f"There are {days_in_year * hours_in_day * minutes_in_hour} minutes in a year")
+```
+
+> ### 💡 **TASK 7**
+>
+> 1.  Assign the current year to a variable called `this_year`.
+> 2.  Assign one of your ages to a variable called `my_age`
+> 3.  Calculate your year of birth by subtracting `my_age` from `this_year`
+> 4.  Print the result.
+
+> ### 💡 **TASK 8**
+>
+> Calculate how old you'll be in 2040 and print the result.
+
+You can overwrite the value you've assigned to any variable by just assigning a new value to it.
+
+## Numbers
+
+Technically, there are two kinds of numbers in Python: integers (numbers without decimals places) and floats (numbers with decimal places). This used to be a bigger deal in python2, but python3 converts as necessary. We've already done some work with numbers above. The built in arithmetic in python that we can use on numbers is:
+
+-   `x + y` addition
+-   `x - y` subtraction
+-   `x * y` multiplication
+-   `x / y` division
+-   `x ** y` exponentiation (that is, x<sup>y</sup>)
+-   `x % y` modulus (this gives you the remainder of doing division)
+-   `x // y` floor division (this gives you the largest whole number that y can go into x)
+
+> ### 💡 **TASK 9**
+>
+> Mary Shelly has written 1,780 words for Frankenstein Chapter 1, and her publisher has told her there is a strict word limit of 300 words per page. 1. Calculate how many full pages chapter 1 is going to be. Assign this value to the variable `full_pages`. 2. There's going to be some words left over. Calculate how many words are going to go onto the overflow page. Assign this value to a variable called `overflow.`
+
+## Strings
+
+We've already been doing a lot with strings in these `print()` statements. But just to be explicit, everything that comes inside `" "` is interpreted as a string, even numbers. If you tried to do
+
+``` python
+1 + "1"
+```
+
+You would get an error, because the first value is a number and the second value is a string.
+
+We *can* use some math-looking-things on strings, though.
+
+> ### 💡 **TASK 10**
+>
+> Do the following assignments.
+>
+> ``` python
+> root    = "Lingu"
+> affixes = "istics"
+> ```
+>
+> Now, print what happens when you do `root + affixes`
+
+> ### 💡 **TASK 11**
+>
+> Again, do the following assignments.
+>
+> ``` python
+> frame = "It's a "
+> word  = "salad "
+> redup = word * 2
+> ```
+>
+> Now, print the result of what happens when you do `frame + redup`
