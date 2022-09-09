@@ -1,0 +1,240 @@
+---
+title: "Lists and Dictionaries"
+editor: visual
+author: "Josef Fruehwald"
+date: "2022-9-9"
+categories: 
+  - "python"
+---
+
+In the previous module, we learned about assignment and the kinds of values we can have in python. Just a quick recap:
+
+- We assign a value to a variable with `=`
+  - e.g. `this_class = "Lin517"`
+- Numeric values are numbers. We can do any kind of math with them.
+- String values are text. They are enclosed either in double quotes (`""`) or single quotes (`''`)
+- Logical values are True and False. We'll usually be creating these values with some kind of logical comparison.
+  - e.g. `this_class == "Lin221"` would give us `False`.
+
+## Lists
+
+We'll rarely want to work with just one of string values. More often we'll want to work with a collection of values. For this we'll use lists. For example, here is a list of Mary Shelly's published novels.
+
+```python
+novels = ["Frankenstein",
+          "Valperga",
+          "The Last Man", 
+          "The Fortunes of Perkin Warbeck, A Romance", 
+          "Lodore", 
+          "Falkner. A Novel"]
+```
+
+Assignment works the same way as before. We can use any text, without commas, as a variable name, then assign a value to it with the `=` operator.
+
+
+> ### 💡 **TASK 1**
+> Assign the names of people in your group (first and last) to
+> a list called `our_group`.
+
+
+
+Lists don't just have to contain strings, but can actually contain any mixture of data types.
+
+```python
+published_dates = [1818, 1823, 1826, 1830, 1835, 1837]
+```
+
+### Lists can get complex
+
+You can have lists that contain other lists.
+
+```python
+my_signs = ["Joe", ["Capricorn", "Gemini", "Capricorn"]]
+```
+
+
+> ### 💡 **TASK 2**
+> Each person in the group create a list of lists, with your name
+> as the first value, and your big three in a list as the second value.
+> Assign this value to a variable named with your initials.
+> (If you don't know your big three or don't want to share,
+> just say "Capricorn" across the board.)
+
+
+### Making changes to lists
+
+#### Adding items
+There are a few ways you can add additional values to lists. One way is with the `+` operator. For example, one of Mary Shelley's books, *Mathida* was published posthumously. 
+
+```python
+posthumous = ["Mathilda"]
+```
+
+We could add this to the list of novels like so.
+
+```python
+print(novels + posthumous)
+```
+
+One thing you should note is that this **doen't** change the list `novels`. If you run `print(novels)` now, it will have just the original books in it. 
+
+To change the actual list stored in `novels`, we need to use the `.append()` "method". We'll talk more about "methods" vs functions in later lessons
+
+```python
+novels.append("Mathilda")
+print(novels)
+```
+
+A thing to remember about this is `.append()` changes the variable `novels` "in place." That is, without doing any additional assignment, or anything, you've changed its value.
+
+
+> ### 💡 **TASK 3**
+> Create a variable called `group_sign` which is a list of each person's
+> star sign list from Task 2.
+
+
+#### Sorting
+
+To sort a list, alphabetically for strings or numerically for numbers, you can use the `.sort()` method. Again, this changes the list in place.
+
+
+> ### 💡 **TASK 4**
+> Alphabetically sort the titles of Mary Shelly's novels.
+
+
+### Indexing Lists (and other "iterables")
+
+In order to pull values *out* of a list, we need to "index" it. Here's a really important thing to remember:
+
+<span style="font-size:50pt;">Indexing Starts at 0!</span>
+
+To get the *fist* value out of a list we use the index value `0`, and pass it in-between brackets, like so:
+
+```python
+print(novels[0])
+```
+
+In the alphabetically ordered list, this should return `Falkner, A Novel`
+
+
+
+> ### 💡 **TASK 5**
+> Print the name of the second member in `our_group`.
+
+
+Numeric indexing works with any "iterable" in python. For example, if we assigned the first novel to a variable, and started indexing *that*, it would start printing individual letters.
+
+```python
+first_novel = novels[0]
+print(first_novel[2])
+```
+
+This will have printed out the *third* letter of the first novel's title.
+
+**🚨We can do this better by stacking up indices.**
+
+Instead of assigning the first valye to a variable, we can get the same result by just placing these indexing brackets one after another.
+
+```python
+print(novels[0][2])
+```
+
+
+> ### 💡 **TASK 6**
+> Print the second letter from the first value in the list `our_group`.
+
+
+
+> ### 💡 **TASK 7**
+> Print the moon sign of the third member of your group, as stored in `our_signs` from task 3.
+
+
+### Slicing
+
+If we want to get a *range* of value out of the list, we can use a "slice". For example, to get the first three books out of the list `novels`, we can do
+
+```python
+print(novels[0:3])
+```
+
+Now... this should strike you as weird, because to get the third *value* from the list, you use `novels[2]`. Why does the slice end in 3?
+
+We should think about the relationship between values and indices like this:
+
+![](assets/index.svg)
+
+Rather than being set one on top of eachother, the indices come *between* the values. When you give just one numeric index, python returns the first value *to the right*. When you pass python a slice with a starting index and and ending index, it returns everything *between those indices*.
+
+### Reverse indexing.
+
+There's a quick way to get the final value from a list or iterable as well: index with `-1`.
+
+
+> ### 💡 **TASK 8**
+> Print the last letter from the last value in the list `our_group`
+
+
+
+> ### 💡 **TASK 9**
+> Print the rising sign of the first person
+> as stored in `our_signs`
+
+
+## Dictionaries
+
+While lists can be highly complex, and can even capture the relationships between data, they can be a bit limiting. For example, here's a list representing the relationship between the title and the year of publication of Mary Shelley's first and last novels.
+
+```python
+novel_dates = [["Frankenstein", 1818],
+               ["Mathilda",     1959]]
+```
+
+While this does the job, if I came along later, and all I knew was the title "Frankenstein" and wanted to quickly get the date, it would take a bit of work with these nested lists.
+
+What would speed up the job are "dictionaries", which store key:value pairs.
+
+```python
+novel_dict = {"Frankenstein"     : 1818,
+              "Valperga"         : 1823,
+              "The Last Man"     : 1826, 
+              "The Fortunes of Perkin Warbeck, A Romance" : 1830,
+              "Lodore"           : 1835,
+              "Falkner. A Novel" : 1837}
+```
+
+These dictionaries are created with opening and closing curly brackets `{ }`, and have a sequence of `key : value` pairs. The "key" is called the "key", because instead of indexing dictionaries with numeric values, we index them with *whatever the keys are*.
+
+So to get the publication date of Frankenstein, we do
+
+```python
+novel_dict["Frankenstein"]
+```
+
+To add a previously absent `key : value` pair to a dictionary, we pass the new key we want to use to `[ ]`, and then assign the new value.
+
+```python
+novel_dict["Mathilda"] = 1959
+```
+
+> ### 💡 **TASK 10**
+> Create a dictionary where the keys are the names (first and last)
+> of your group members, and the values are your heights, in
+> inches (as a numeric value).
+>
+> (Hint, if you're 5'10, the math would be `(5*12) + 10`)
+
+
+
+> ### 💡 **TASK 11**
+> Print the height of the alphebetically first group member. (Don't just type in their name, *get* it from python).
+
+
+### Checking for keys
+
+To check if a key is already in the dictionary, we can use the `in` operator.
+
+```python
+"Mary: A Fiction" in novel_dict
+# False
+``
+

@@ -7,6 +7,7 @@ date: "2022-8-24"
 format: html
 license: "CC-BY-SA 4.0"
 editor: visual
+image: "index_files/figure-html/shift-prob-1.png"
 knitr:
   opts_chunk: 
     echo: false
@@ -125,6 +126,7 @@ results_mat = np.row_stack(collector)
 ```
 
 ```{r}
+#| label: shift-prob
 #| fig-width: 8
 #| fig-height: 5
 py$results_mat %>%

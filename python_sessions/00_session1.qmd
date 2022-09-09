@@ -1,9 +1,11 @@
 ---
 title: "Starting Python"
 editor: visual
+author: "Josef Fruehwald"
+date: "2022-9-2"
+categories: 
+  - "python"
 ---
-
-# Instructions
 
 Welcome to Python!
 

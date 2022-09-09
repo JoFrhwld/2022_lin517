@@ -24,6 +24,8 @@ website:
         contents:
           - href: "python_sessions/00_session1.qmd"
             text: "Session 1"
+          - href: "python_sessions/01_session2.qmd"
+            text: "Session 2"
   page-navigation: true
   
 format:
