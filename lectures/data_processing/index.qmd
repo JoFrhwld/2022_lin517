@@ -5,6 +5,7 @@ author:
     url: https://jofrhwld.github.io/
 date: "2022-9-6"
 editor: visual
+bibliography: references.bib
 ---
 
 ## Most data analysis time is spent on data wrangling
@@ -14,7 +15,7 @@ Before we even get to substantive issues of "text normalization" and "tokenizati
 ```{r}
 #| echo: false
 library(reticulate)
-use_condaenv("authoring")
+use_condaenv("./env")
 ```
 
 ```{python}
@@ -126,15 +127,17 @@ I called the issues above "data wrangling", since it's mostly about identifying 
 
 Consider the following sentences
 
-> The 2019 film Cats is a movie about cats. Cats appear in every scene. A cat appears in every scene \>.\<.
+> The 2019 film Cats is a movie about cats. Cats appear in every scene. A cat can always be seen.
 
-Let's split this sentence up along whitespace, and count how many times "cats" appears.
+Let's split this sentence up along whitespace[^1], and count how many times "cats" appears.
+
+[^1]: The regex shortcut `\s` stands for all white space, including spaces, tabs, newlines and character returns.
 
 ```{python}
 import re
 phrase = """The 2019 film Cats is a movie about cats. 
 Cats appear in every scene. 
-A cat appears in every scene. >.< :-)"""
+A cat can always be seen"""
 
 words = re.split("\s", phrase)
 cat_c = Counter(words)
@@ -156,9 +159,9 @@ for V in cat_c.most_common():
 
 ```
 
-A very important thing to keep in mind is that our language models will treat the words in these rows as three completely separate word types.[^1] That even includes the period `.` in the second row. Some typical steps involve
+A very important thing to keep in mind is that our language models will treat the words in these rows as three completely separate word types.[^2] That even includes the period `.` in the second row. Some typical steps involve
 
-[^1]: At least, before we start doing fancier models that start taking into account distributional semantics.
+[^2]: At least, before we start doing fancier models that start taking into account distributional semantics.
 
 -   separating punctuation from words
 
@@ -184,7 +187,89 @@ for V in cat_c2.most_common():
     print(f"{V[0]} | {V[1]}")
 ```
 
-### Challenges with speech and text
+We've now got a slightly better set of counts. With the punctuation stripped and everything pushed to lowercase, there's now just two word forms: `cats` and `cat`.
+
+One downside, though, is we've also collapsed together the title *Cats*, which refers to either a Broadway musical or a 2019 film, and the word "cats" which refers to furry felines. Merging these two together could be sub-optimal for later tasks, like, say, sentiment analysis of movie reviews.
+
+> 'Cats' is both a horror and an endurance test, a dispatch from some neon-drenched netherworld where the ghastly is inextricable from the tedious. -- [LA Times](https://www.latimes.com/entertainment-arts/movies/story/2019-12-18/cats-review-andrew-lloyd-webber)
+
+<details>![](assets/sadcat.jpeg){fig-alt="A cat looking at the camera that has been photoshopped to appear as if it is crying." fig-align="center"}</details>
+
+## Tokenization (*or*, text is complex)
+
+Setting aside *semantic* issues, there are a lot of things that happen inside of text, especially if it is transcribed speech, that makes normalizing text and **tokenizing** it way more challenging than just splitting up on white space and stripping out punctuation, even just for English.
+
+#### Places to leave in punctuation
+
+Some examples given by Jurafsky & Martin for where you might want to leave in punctuation are:
+
+-   You don't want to eliminate punctuation from inside `Ph.D`, or `m.p.h.`. You also don't want to eliminate it from some proper names, like ampersands in `Procter & Gamble`, `Texas A&M`, `A&W`, `m&m's`.
+
+-   You'll want to keep formatting in numerals, and not split them into separate words. These are all possible numeric formats cross culturally for the same quantity
+
+    -   `1,000.55`
+
+    -   `1.000,55`
+
+    -   `1 000,55`
+
+-   Currency symbols should probably be kept together with their numerals, and depending on the culture & denomination.
+
+    -   `$0.99`
+
+    -   `99¢`
+
+    -   `€0,99`
+
+-   Dates: There are so many different permutations on how dates can be formatted that I shouldn't list them all here, but here are some.[^3]
+
+    -   yyyy-mm-dd `2022-09-12`, yyyy/mm/dd `2022/09/12`
+
+    -   yyyy-m-dd `2022-9-12`, yyyy/m/dd `2022/9/12`
+
+    -   dd-mm-yyyy `12-09-2022`, dd/mm/yyyy `12/09/2022`
+
+    -   dd-m-yyyy `12-9-2022`, dd/m/yyyy `12/9/2022`
+
+    -   dd-mm-yy `12-09-22`, dd/mm/yy `12/09/2022`
+
+    -   mm-dd-yyyy `09-12-2022`, mm/dd/yyyy `09/12/2022`
+
+    -   m-dd-yyyy `9-12-2022`, m/dd/yyyy `9/12/2022`
+
+    -   mm-dd-yy `09-12-22`, mm/dd/yy `09/12/22`
+
+    -   m-dd-yy `9-12-22`, m/dd/yy `9/12/22`
+
+-   Emoticons,[^4] where the token is entirely punctuation `:)`, `>.<`.
+
+[^3]: I'm being tedious here on purpose, because you have to keep in mind that if you wrote a function to handle just one of these possible date formats, it would not immediately translate over to the others!
+
+[^4]: This example *isn't* from Jurafsky & Martin.
+
+#### Places to split up words
+
+Sometimes the tokens you get back from whitespace tokenization ought to be split up even further. One example might be hyphenated words, like `hard-won`.
+
+-   `hard-won` ➔ `hard`, `won` or `hard`, `-`, `won`.
+
+Another example involves clitics, like `n't` or `'re` in English.
+
+-   `isn't` ➔ `is`, `n't`
+
+-   `can't` ➔ `ca`, `n't`
+
+-   `what're` ➔ `what`, `'re`
+
+#### Places to glue words together
+
+You might want to also glue together tokens from whitespace tokenization.
+
+-   `New`, `York`, `City` ➔ `New York City`
+
+-   `Super`, `Smash`, `Brothers` ➔ `Super Smash Brothers`.
+
+#### Challenges with speech and text
 
 -   
 
@@ -206,20 +291,259 @@ for V in cat_c2.most_common():
 
         {{< fa bullhorn >}}: "one point five thousand dollars"
 
-### Challenges with social text
-
-A tokenizer would ideally work equally well for any of these inputs, keeping them together as tokens rather than each split up as punctuation.
-
--   `XD`
-
--   `>.<`
-
--   `T.T`
-
--   `:-)`
-
--   `:3`
-
--   😺
-
 ## Tokenizers
+
+There seem to be *broadly* two kinds of tokenizers people use, depending on their goals.
+
+1.  Tokenizers that try to hew to linguistic structure, and can generate relatively large vocabulary sizes (number of tokens).
+2.  Tokenizers that try to keep the vocabulary size *relatively* small, to make neural network training possible.
+
+### Word/language piece based tokenizers
+
+There are a number of tokenizers available through the nltk (Natural Language Took Kit) [@bird2009] python package. They all have slightly different settings and outcomes. Here I'll compare the PennTreeBank tokenizer, a simpler punctuation-based tokenizer, and a "casual" tokenizer.
+
+#### PennTreeBank
+
+The [PennTreeBank tokenizer](https://www.nltk.org/_modules/nltk/tokenize/treebank.html#TreebankWordTokenizer) is built up out of regular expressions (more on that soon). It
+
+-   separates out punctuation and non-alphanumeric characters as their own tokens
+
+-   Separates off contractions as their own tokens, [using a fixed list](https://github.com/nltk/nltk/blob/2e9cf65072f8cecdc5f2beaa7a66ac8de8f5b31e/nltk/tokenize/destructive.py#L18)
+
+```{python}
+from nltk.tokenize import sent_tokenize, TreebankWordTokenizer
+
+phrase2 = """CATS had a budget of $100,000,000, most of which went into the so-called 'digital fur technology'.
+It's a little hard to believe, but it only made $75.5 million at the box office. 
+#badmovie :-P
+"""
+
+sentences = sent_tokenize(phrase2)
+tokens = [TreebankWordTokenizer().tokenize(s) for s in sentences]
+```
+
+```{python}
+#| echo: false
+#| results: asis
+
+flat_tokens = [word for sent in tokens for word in sent]
+
+print("|   |   |   |   |   |   |")
+print("|---|---|---|---|---|---|")
+start = 0
+while start < len(flat_tokens):
+  row = flat_tokens[start:(start+6)]
+  row = ["`" + x + "`" for x in row]
+  row_print = "|" + "|".join(row) + "|"
+  print(row_print)
+  start = start+6
+
+
+```
+
+#### Simple whitespace + punctuation tokenizer
+
+Splits strings based on whitespace & non-alphanum
+
+```{python}
+from nltk.tokenize import wordpunct_tokenize
+tokens = [wordpunct_tokenize(s) for s in sentences]
+```
+
+```{python}
+#| echo: false
+#| results: asis
+
+flat_tokens = [word for sent in tokens for word in sent]
+
+print("|   |   |   |   |   |   |")
+print("|---|---|---|---|---|---|")
+start = 0
+while start < len(flat_tokens):
+  row = flat_tokens[start:(start+6)]
+  row = ["`" + x + "`" for x in row]
+  row_print = "|" + "|".join(row) + "|"
+  print(row_print)
+  start = start+6
+
+
+```
+
+#### Tweet Tokenizer
+
+Intended to be more apt for [tokenizing tweets](https://github.com/nltk/nltk/blob/develop/nltk/tokenize/casual.py).
+
+```{python}
+from nltk.tokenize import TweetTokenizer
+tokens = [TweetTokenizer().tokenize(s) for s in sentences]
+```
+
+```{python}
+#| echo: false
+#| results: asis
+
+flat_tokens = [word for sent in tokens for word in sent]
+
+print("|   |   |   |   |   |   |")
+print("|---|---|---|---|---|---|")
+start = 0
+while start < len(flat_tokens):
+  row = flat_tokens[start:(start+6)]
+  row = ["`" + x + "`" for x in row]
+  row_print = "|" + "|".join(row) + "|"
+  print(row_print)
+  start = start+6
+
+
+```
+
+### Fixed Vocab Tokenizing
+
+The downside of tokenizers like the three above is that you can't pre-specify how many types you will get out. That is, you can't pre-specify your vocabulary size. That isn't ideal for neural-network based models, which need to use matrices of finite and pre-specified size. So there are also tokenizers that keep a fixed cap on the vocabulary size, even if they result in tokens that aren't really linguistically meaningful.
+
+#### Byte Pair Encoding
+
+::: {layout-ncol="2" style="border-style: solid;"}
+Words
+
+    c a t s _
+    c a n ' t _
+    c a n t e r _
+
+Vocabulary
+
+    {'a', 'e', 't', 'r', 
+    's', 'n', 'c', "'", ' '}
+:::
+
+```{python}
+#| echo: false
+from nltk import ngrams
+from collections import Counter
+sent = "cats can't canter "
+```
+
+::: {layout-ncol="2" style="border-style: solid;"}
+Words
+
+    ca t s _
+    ca n ' t _
+    ca n t e r _
+
+Vocabulary
+
+    {'a', 'e', 't', 'r', 
+    's', 'n', 'c', "'", ' ', 'ca'}
+:::
+
+::: {layout-ncol="2" style="border-style: solid;"}
+Words
+
+    ca t s _
+    can ' t _
+    can t e r _
+
+Vocabulary
+
+    {'a', 'e', 't', 'r', 
+    's', 'n', 'c', "'", ' ', 'ca', 'can'}
+:::
+
+#### Training
+
+```{python}
+import gutenbergpy.textget
+import sentencepiece as spm
+
+raw_book = gutenbergpy.textget.get_text_by_id(84)
+clean_book  = gutenbergpy.textget.strip_headers(raw_book)
+with open("texts/frank.txt", 'wb') as file:
+  x = file.write(clean_book)
+  file.close()
+
+```
+
+```{python}
+spm.SentencePieceTrainer.train(input = "texts/frank.txt", 
+                               model_prefix = "m",
+                               vocab_size = 5000, 
+                               model_type = "bpe")
+```
+
+```{python}
+sp = spm.SentencePieceProcessor(model_file='m.model')
+```
+
+```{python}
+#| code-overflow: wrap
+para = """
+You will rejoice to hear that no disaster has accompanied the
+commencement of an enterprise which you have regarded with such evil
+forebodings. I arrived here yesterday, and my first task is to assure
+my dear sister of my welfare and increasing confidence in the success
+of my undertaking
+"""
+
+sp.encode_as_pieces(para)
+```
+
+#### The Benefit?
+
+```{python}
+#| echo: false
+
+from nltk.tokenize import word_tokenize
+with open("texts/frank.txt", 'r') as file:
+  lines = file.readlines()
+
+all_lines = "".join(lines)
+nltk_tok = word_tokenize(all_lines)
+bpe_tok = sp.encode_as_pieces(all_lines)
+```
+
+```{r}
+#| echo: false
+#| message: false
+library(tidyverse)
+library(ggrepel)
+library(showtext)
+font_add_google("Atkinson Hyperlegible", "atkinson")
+showtext_auto()
+
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
+library(khroma)
+
+tibble(tok =py$nltk_tok) %>%
+  count(tok) %>%
+  arrange(-n) %>%
+  mutate(rank = 1:n()) -> nltk_df
+
+
+tibble(tok = py$bpe_tok) %>%
+  count(tok) %>%
+  arrange(-n) %>%
+  mutate(rank = 1:n()) -> bpe_df
+```
+
+```{r}
+#| echo: false
+nltk_df %>%
+  ggplot(aes(rank, n))+
+    geom_point(aes(color = "PennTreeBank"))+
+    geom_point(data = bpe_df, aes(color = "bpe"))+
+    scale_x_log10(labels = scales::label_comma())+
+    scale_y_log10(labels = scales::label_comma())+
+    scale_color_bright(name = NULL)+
+    theme(legend.position = "top")
+```
+
+```{r}
+#| echo: false
+bpe_df %>%
+  mutate(method = "bpe") %>%
+  bind_rows(nltk_df %>% mutate(method = "ptb")) %>%
+  group_by(method) %>%
+  summarise(once = sum(n == 1),
+            total = n()) %>%
+  mutate(`proportion once`= once/total) %>% knitr::kable(digits = 3)
+```
