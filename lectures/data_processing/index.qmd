@@ -403,53 +403,85 @@ The downside of tokenizers like the three above is that you can't pre-specify ho
 
 #### Byte Pair Encoding
 
+Byte Pair Encoding is one approach to tokenizing where we can pre-specify the maximum vocabulary size either by setting a maximum vocabulary hyperparameter, or by setting a maximum iteration hyperparameter.
+
+Let's start out with a fake training of a byte pair encoder with the simple vocabulary "cats can't canter". We kick things off treating every character as a token, plus a specialized start-of-word symbol, which I'm representing with `_`.
+
 ::: {layout-ncol="2" style="border-style: solid;"}
-Words
+Tokens
 
-    c a t s _
-    c a n ' t _
-    c a n t e r _
+    _ c a t s
+    _ c a n ' t
+    _ c a n t e r
 
-Vocabulary
+Types
 
     {'a', 'e', 't', 'r', 
-    's', 'n', 'c', "'", ' '}
+    's', 'n', 'c', "'", '_'}
 :::
 
 ```{python}
 #| echo: false
 from nltk import ngrams
 from collections import Counter
-sent = "cats can't canter "
+sent = "_cats can't canter"
 ```
 
-::: {layout-ncol="2" style="border-style: solid;"}
-Words
+This is, in principle, the smallest and *simplest* tokenization we could do for any input text. While the total number of *words* is infinite, the total number of characters or symbols we use to create those words is finite.
 
-    ca t s _
-    ca n ' t _
-    ca n t e r _
-
-Vocabulary
-
-    {'a', 'e', 't', 'r', 
-    's', 'n', 'c', "'", ' ', 'ca'}
-:::
+The next step is to count up all of the pairs (or bigrams) of tokens in the training data. In this case, both (`_`, `c`) and (`c`, `a`) appear equally commonly, so I make a decision and say (`_`, `c`) is the one we'll process first. We'll paste them together, call them a new type, and replace all (`_`, `c`) sequences with `_c`.
 
 ::: {layout-ncol="2" style="border-style: solid;"}
-Words
+tokens
 
-    ca t s _
-    can ' t _
-    can t e r _
+    _c a t s
+    _c a n ' t
+    _c a n t e r
 
-Vocabulary
+types
 
     {'a', 'e', 't', 'r', 
-    's', 'n', 'c', "'", ' ', 'ca', 'can'}
+    's', 'n', 'c', "'", ' ',
+    `_c`}
 :::
+
+Repeating the process, the most frequently occurring bigram is now (`_c`, `a`), so we'll add `_ca` as a new type, and replace all (`_c`, `a`) sequences with `_ca`.
+
+::: {layout-ncol="2" style="border-style: solid;"}
+tokens
+
+    _ca t s 
+    _ca n ' t _
+    _ca n t e r _
+
+types
+
+    {'a', 'e', 't', 'r', 
+    's', 'n', 'c', "'", ' ', 
+    '_c', '_ca'}
+:::
+
+Finally, the last most frequent sequence is (`_ca`, `n`), so we'll add `_can` to the vocabulary, and collapse (`_ca`, `n`) sequences.
+
+::: {layout-ncol="2" style="border-style: solid;"}
+tokens
+
+    _ca t s
+    _can ' t
+    _can t e r
+
+types
+
+    {'a', 'e', 't', 'r', 
+    's', 'n', 'c', "'", ' ', 
+    '_c', '_ca', '_can'}
+:::
+
+We'll stop at that point, but we could either continue for a fixed number of iterations, or until our type, or vocabulary size reaches a fixed number.
 
 #### Training
+
+The python library `sentencepiece` has a method for training a BPE tokenizer. We'll run it on *Frankenstein* with a vocabulary limited to about \~1,000 items to see what we'll get.
 
 ```{python}
 import gutenbergpy.textget
@@ -466,9 +498,11 @@ with open("texts/frank.txt", 'wb') as file:
 ```{python}
 spm.SentencePieceTrainer.train(input = "texts/frank.txt", 
                                model_prefix = "m",
-                               vocab_size = 5000, 
+                               vocab_size = 1000, 
                                model_type = "bpe")
 ```
+
+The code above trained the tokenizer and saved it as a model. Here we'll load it and run it on a sample paragraph to look at the output.
 
 ```{python}
 sp = spm.SentencePieceProcessor(model_file='m.model')
@@ -484,10 +518,12 @@ my dear sister of my welfare and increasing confidence in the success
 of my undertaking
 """
 
-sp.encode_as_pieces(para)
+print(sp.encode_as_pieces(para))
 ```
 
 #### The Benefit?
+
+Why tokenize things this way? On the one hand, we wind up with tokens that don't align with any particular linguistic structure. On the other, we've got a predictable vocabulary size, and a dramatically less serious data sparsity problem.
 
 ```{python}
 #| echo: false
