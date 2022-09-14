@@ -1,0 +1,165 @@
+---
+title: "Addendum"
+author:
+  - name: Josef Fruehwald
+    url: https://jofrhwld.github.io/
+date: "2022-9-6"
+knitr: 
+  opts_chunk: 
+    echo: false
+    message: false
+    warning: false
+editor: visual
+---
+
+## `nltk` vs `spaCy`
+
+In the lecture notes before, I showed you how to do tokenizing in the python package `nltk`. But there's another big NLP package out there called [`spaCy`](https://spacy.io/). Why did I focus on nltk? I think I can best explain that with this graph:
+
+```{r}
+library(rvest)
+library(tidyverse)
+library(khroma)
+library(showtext)
+font_add_google("Atkinson Hyperlegible", "atkinson")
+showtext_auto()
+
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
+library(ggrepel)
+```
+
+```{r}
+nltk_hist <- read_html("https://pypi.org/project/nltk/#history")
+```
+
+```{r}
+nltk_hist %>%
+  html_nodes(".release") %>%
+  html_nodes(".release__version-date") %>%
+  html_nodes("time") %>%
+  html_attr("datetime") %>%
+  lubridate::ymd_hms() -> release_dates
+
+nltk_hist %>%
+  html_nodes(".release") %>%
+  html_nodes(".release__version") %>%
+  html_text() %>%
+  str_replace_all("\\s", "")->versions
+```
+
+```{r}
+tibble(date = release_dates,
+       version = versions) %>%
+  filter(!str_detect(version, "[a-zA-Z]")) %>%
+  separate(version, into = c("major", "minor", "patch"),
+           convert = T) %>%
+  replace_na(list(major = 0, minor = 0, patch = 0))%>%
+  group_by(major, minor) %>%
+  arrange(patch) %>%
+  slice(1) %>%
+  group_by(major) %>%
+  mutate(minor_0 = minor-min(minor),
+         minor_pct = minor_0/(max(minor_0)+1),
+         decimal = major + minor_pct,
+         package = "nltk") -> nltk_df
+```
+
+```{r}
+spacy_hist <- read_html("https://pypi.org/project/spacy/#history")
+```
+
+```{r}
+spacy_hist %>%
+  html_nodes(".release") %>%
+  html_nodes(".release__version-date") %>%
+  html_nodes("time") %>%
+  html_attr("datetime") %>%
+  lubridate::ymd_hms() -> spacy_release_dates
+
+spacy_hist %>%
+  html_nodes(".release") %>%
+  html_nodes(".release__version") %>%
+  html_text() %>%
+  str_replace_all("\\s", "")->spacy_versions
+```
+
+```{r}
+tibble(date = spacy_release_dates,
+       version = spacy_versions) %>%
+  filter(!str_detect(version, "[a-zA-Z]")) %>%
+  separate(version, into = c("major", "minor", "patch"),
+           convert = T) %>%
+  replace_na(list(major = 0, minor = 0, patch = 0))%>%
+  group_by(major, minor) %>%
+  arrange(patch) %>%
+  slice(1) %>%
+  group_by(major) %>%
+  mutate(minor_0 = minor-min(minor),
+         minor_pct = minor_0/(max(minor_0)+1),
+         decimal = major + minor_pct,
+         package = "spacy") -> spacy_df
+```
+
+```{r}
+set.seed(517)
+annot_df <- tibble(date = lubridate::ymd(c("2009-9-1", "2013-9-9")),
+                   decimal = 3,
+                   label = c("Joe takes math foundations", "Joe finishes PhD"))
+
+spacy_df %>%
+  bind_rows(nltk_df) %>%
+  mutate(date = as.Date(date)) %>%
+  ggplot(aes(date, decimal, color = package))+
+    geom_point(data = annot_df, 
+               color = "black")+
+    geom_segment(data = annot_df,
+                 y = 0, aes(yend = decimal,
+                            x = date, xend = date),
+                 color = "black")+
+    geom_step(aes(group = package), 
+              color = "white",
+              size = 2)+
+    geom_step(size = 1)+
+    geom_label_repel(data = annot_df,
+                     aes(label = str_wrap(label)), 
+                     color = "black")+
+    scale_color_bright()+
+    labs(y = "version")
+```
+
+## Tokenizing with spaCy
+
+```{r}
+library(reticulate)
+use_condaenv("./env")
+```
+
+```{zsh}
+#| echo: true
+#| eval: false
+# bash
+python -m spacy download en_core_web_sm
+```
+
+```{python}
+#| echo: true
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
+phrase2 = """
+CATS had a budget of $100,000,000, most of which 
+went into the so-called 'digital fur technology'. 
+It's a little hard to believe, but it only made 
+$75.5 million at the box office. #badmovie :-P
+"""
+
+doc = nlp(phrase2.strip().replace("\n", " "))
+```
+
+```{python}
+#| echo: true
+#| results: asis
+for token in doc:
+  print(f"| `{token.text}`", end = " ")
+
+```

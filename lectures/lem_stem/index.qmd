@@ -1,0 +1,69 @@
+---
+title: "Lemmatizing and Stemming"
+editor: visual
+author:
+  - name: Josef Fruehwald
+    url: https://jofrhwld.github.io/
+knitr: 
+  opts_chunk: 
+    echo: false
+date: "2022-9-6"
+---
+
+```{r}
+library(reticulate)
+use_condaenv("./env")
+```
+
+```{python}
+import gutenbergpy.textget
+from nltk.tokenize import word_tokenize
+import nltk
+import spacy
+
+raw_book = gutenbergpy.textget.get_text_by_id(84)
+clean_book  = gutenbergpy.textget.strip_headers(raw_book)
+with open("texts/frank.txt", 'wb') as file:
+  x = file.write(clean_book)
+  file.close()
+```
+
+```{python}
+book = clean_book.decode("utf-8")
+```
+
+```{python}
+book_line = book.strip().replace("\n", " ")
+tok1 = word_tokenize(book_line)
+```
+
+```{python}
+run = [word for word in tok1 if word == "run"]
+runs = [word for word in tok1 if word == "runs"]
+ran = [word for word in tok1 if word == "ran"]
+running = [word for word in tok1 if word == "running"]
+```
+
+```{python}
+print(len(run))
+print(len(runs))
+print(len(ran))
+print(len(running))
+```
+
+```{python}
+wnl = nltk.WordNetLemmatizer()
+[wnl.lemmatize(t) for t in run + ran + running]
+```
+
+```{python}
+nlp = spacy.load("en_core_web_sm")
+lemmatizer = nlp.get_pipe("lemmatizer")
+doc = nlp("I ran running runs")
+```
+
+```{python}
+for token in doc:
+  print(f"{token.text} - {token.lemma_}")
+
+```

@@ -1,0 +1,14 @@
+{
+  "hash": "459e9fef0fdae55f0654e47c42928b61",
+  "result": {
+    "markdown": "---\ntitle: \"Lemmatizing and Stemming\"\neditor: visual\nauthor:\n  - name: Josef Fruehwald\n    url: https://jofrhwld.github.io/\nknitr: \n  opts_chunk: \n    echo: false\ndate: \"2022-9-6\"\n---\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n::: {.cell-output .cell-output-stdout}\n```\n2\n```\n:::\n\n::: {.cell-output .cell-output-stdout}\n```\n0\n```\n:::\n\n::: {.cell-output .cell-output-stdout}\n```\n7\n```\n:::\n\n::: {.cell-output .cell-output-stdout}\n```\n3\n```\n:::\n:::\n\n::: {.cell}\n::: {.cell-output .cell-output-stdout}\n```\n['run', 'run', 'ran', 'ran', 'ran', 'ran', 'ran', 'ran', 'ran', 'running', 'running', 'running']\n```\n:::\n:::\n\n::: {.cell}\n\n:::\n\n::: {.cell}\n::: {.cell-output .cell-output-stdout}\n```\nI - I\nran - run\nrunning - run\nruns - run\n```\n:::\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

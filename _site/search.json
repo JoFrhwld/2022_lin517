@@ -116,7 +116,7 @@
     "href": "index.html",
     "title": "Lin517: Natural Language Processing",
     "section": "",
-    "text": "Order By\n       Default\n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n         \n          Title\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\nDate\n\n\nTitle\n\n\nCategories\n\n\n\n\n\n\n\n\n\nAug 20, 2022\n\n\nMathematical Notation\n\n\n\n\n\n\n\n \n\n\n\nAug 22, 2022\n\n\nReading a Technical Paper\n\n\n\n\n\n\n\n\n\nAug 24, 2022\n\n\nWhat is NLP?(for this course)\n\n\n\n\n\n\n\n\n\nAug 31, 2022\n\n\nData Sparsity\n\n\n\n\n\n\n\n \n\n\n\nSep 2, 2022\n\n\nStarting Python\n\n\npython\n\n\n\n\n\n\n\nSep 6, 2022\n\n\nData Processing\n\n\n\n\n\n\n\n\n\nSep 9, 2022\n\n\nLists and Dictionaries\n\n\npython\n\n\n\n\n\n\nNo matching items"
+    "text": "Order By\n       Default\n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n         \n          Title\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\nDate\n\n\nTitle\n\n\nCategories\n\n\n\n\n\n\n\n\n\nAug 20, 2022\n\n\nMathematical Notation\n\n\n\n\n\n\n\n \n\n\n\nAug 22, 2022\n\n\nReading a Technical Paper\n\n\n\n\n\n\n\n\n\nAug 24, 2022\n\n\nWhat is NLP?(for this course)\n\n\n\n\n\n\n\n\n\nAug 31, 2022\n\n\nData Sparsity\n\n\n\n\n\n\n\n \n\n\n\nSep 2, 2022\n\n\nStarting Python\n\n\npython\n\n\n\n\n\n \n\n\n\nSep 6, 2022\n\n\nAddendum\n\n\n\n\n\n\n\n\n\nSep 6, 2022\n\n\nData Processing\n\n\n\n\n\n\n\n \n\n\n\nSep 6, 2022\n\n\nLemmatizing and Stemming\n\n\n\n\n\n\n\n\n\nSep 9, 2022\n\n\nLists and Dictionaries\n\n\npython\n\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "python_sessions/01_session2.html",
@@ -222,6 +222,27 @@
     "title": "Data Sparsity",
     "section": "Extra",
     "text": "Extra\nTo work out just how accurate the Good-Turing estimate is, I did the following experiment.\nStarting from the beginning of the book, I coded each word \\(w_i\\) for whether or not it had already appeared in the book, 1 if yes, 0 if no. This is my best shot at writing that out in mathematical notation.\n\\[\na_i = \\left\\{\\begin{array}{ll}1,& x_i\\in x_{1:i-1}\\\\\n                             0,& x_1 \\notin x_{1:i-1}\\end{array}\\right\\}\n\\]\nThen for every position in the book, I made a table of counts of all the words up to that point in the book so far, and got the proportion of word tokens that had appeared only once. Again, here’s my best stab at writing that out mathematically.\n\\[\nc_{ji} = C(w_j), w_j \\in x_{i:i-1}\n\\]\n\\[\nr_i = \\sum_{j=1}\\left\\{\\begin{array}{ll}1,&c_{ji}=1\\\\0,& c_{ji} >1 \\end{array}\\right\\}\n\\]\n\\[\ng_i = \\frac{r_i}{i-1}\n\\]\n\nfrank_words$first_appearance <- NA\nfrank_words$first_appearance[1] <- 1\n\nfrank_words$gt_est <- NA\nfrank_words$gt_est[1] <- 1\nfor(i in 2:nrow(frank_words)){\n  i_minus <- i-1\n  prev_corp <- frank_words$word[1:i_minus]\n  this_word <- frank_words$word[i]\n  \n  frank_words$first_appearance[i] <- ifelse(this_word %in% prev_corp, 0, 1)\n  frank_words$gt_est[i] <- sum(table(prev_corp) == 1)/i_minus\n}\n\n\n\n\nThen, I plotted the Good-Turing estimate for every position as well as a non-linear logistic regression smooth."
+  },
+  {
+    "objectID": "lectures/lem_stem/index.html",
+    "href": "lectures/lem_stem/index.html",
+    "title": "Lemmatizing and Stemming",
+    "section": "",
+    "text": "2\n\n\n0\n\n\n7\n\n\n3\n\n\n\n\n['run', 'run', 'ran', 'ran', 'ran', 'ran', 'ran', 'ran', 'ran', 'running', 'running', 'running']\n\n\n\n\n\n\n\nI - I\nran - run\nrunning - run\nruns - run"
+  },
+  {
+    "objectID": "lectures/data_processing/addendum.html",
+    "href": "lectures/data_processing/addendum.html",
+    "title": "Addendum",
+    "section": "",
+    "text": "In the lecture notes before, I showed you how to do tokenizing in the python package nltk. But there’s another big NLP package out there called spaCy. Why did I focus on nltk? I think I can best explain that with this graph:"
+  },
+  {
+    "objectID": "lectures/data_processing/addendum.html#tokenizing-with-spacy",
+    "href": "lectures/data_processing/addendum.html#tokenizing-with-spacy",
+    "title": "Addendum",
+    "section": "Tokenizing with spaCy",
+    "text": "Tokenizing with spaCy\n\n\n\n\n# bash\npython -m spacy download en_core_web_sm\n\n\nimport spacy\n\nnlp = spacy.load(\"en_core_web_sm\")\nphrase2 = \"\"\"\nCATS had a budget of $100,000,000, most of which \nwent into the so-called 'digital fur technology'. \nIt's a little hard to believe, but it only made \n$75.5 million at the box office. #badmovie :-P\n\"\"\"\n\ndoc = nlp(phrase2.strip().replace(\"\\n\", \" \"))\n\nfor token in doc:\n  print(f\"| `{token.text}`\", end = \" \")\nCATS | had | a | budget | of | $ | 100,000,000 | , | most | of | which |  | went | into | the | so | - | called | ' | digital | fur | technology | ' | . |  | It | 's | a | little | hard | to | believe | , | but | it | only | made |  | $ | 75.5 | million | at | the | box | office | . | # | badmovie | :-P"
   },
   {
     "objectID": "lectures/data_processing/index.html",
