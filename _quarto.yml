@@ -22,6 +22,8 @@ website:
             text: "Data processing"
           - href: "lectures/data_processing/addendum.qmd"
             text: "Data processing -- addendum"
+          - href: "lectures/lem_stem/index.qmd"
+            text: "Lemmatizing and stemming"
       - section: "python sessions"
         contents:
           - href: "python_sessions/00_session1.qmd"
