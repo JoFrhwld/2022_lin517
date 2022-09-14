@@ -91,6 +91,7 @@ print(
 Also, when something like inflectional morphology makes a change to the stem, it won't get undone by the stemmer.
 
 ```{python}
+#| results: asis
 run = ["run", "runs", "running", "ran", "runner"]
 
 print(
@@ -149,6 +150,7 @@ lemmatizer = nlp.get_pipe("lemmatizer")
 ```
 
 ```{python}
+#| results: asis
 doc = nlp(" ".join(cry))
 print(
   tabulate(
@@ -159,6 +161,7 @@ print(
 ```
 
 ```{python}
+#| results: asis
 doc = nlp(" ".join(run))
 print(
   tabulate(
