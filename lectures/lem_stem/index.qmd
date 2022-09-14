@@ -6,64 +6,168 @@ author:
     url: https://jofrhwld.github.io/
 knitr: 
   opts_chunk: 
-    echo: false
-date: "2022-9-6"
+    echo: true
+date: "2022-9-13"
 ---
 
 ```{r}
+#| echo: false
 library(reticulate)
 use_condaenv("./env")
 ```
 
+## What tokenizing does *not* get for you
+
+Coming back to the example sentences from [the first data processing](../data_processing/index.qmd) lecture, properly tokenizing these sentences will only partly help us with our linguistic analysis.
+
 ```{python}
-import gutenbergpy.textget
-from nltk.tokenize import word_tokenize
+#| results: asis
 import nltk
-import spacy
+from nltk.tokenize import word_tokenize
+from collections import Counter
+from tabulate import tabulate
 
-raw_book = gutenbergpy.textget.get_text_by_id(84)
-clean_book  = gutenbergpy.textget.strip_headers(raw_book)
-with open("texts/frank.txt", 'wb') as file:
-  x = file.write(clean_book)
-  file.close()
+phrase = """The 2019 film CATS is a movie about cats. 
+Cats appear in every scene. 
+A cat can always be seen"""
+
+# case folding
+phrase_lower = phrase.lower()
+
+# tokenization
+tokens = word_tokenize(phrase_lower)
+
+# counting
+token_count = Counter(tokens)
+
+# cat focus
+cat_list = [[k,token_count[k]] for k in token_count if "cat" in k]
+
+print(tabulate(cat_list,
+               headers = ["type", "count"]))
+```
+
+We've still got the plural `cats` being counted as a separate word from `cat`, which for our weird use case, we don't want. Our options here are to either "stem" or "lemmatize" our tokens.
+
+## Stemming
+
+Stemming is focused on cutting off morphemes and, to some degree, providing a consistent stem across all types that share a stem. So the outcomes aren't always a recognizable word,
+
+```{python}
+from nltk.stem import PorterStemmer
+from nltk.stem import SnowballStemmer
 ```
 
 ```{python}
-book = clean_book.decode("utf-8")
+#| results: asis
+p_stemmer = PorterStemmer()
+p_stemmed = [p_stemmer.stem(t) for t in tokens]
+for t in p_stemmed:
+  print(f"`{t}` |", end = " ")
+
 ```
 
 ```{python}
-book_line = book.strip().replace("\n", " ")
-tok1 = word_tokenize(book_line)
+#| results: asis
+s_stemmer = SnowballStemmer("english")
+s_stemmed = [s_stemmer.stem(t) for t in tokens]
+for t in s_stemmed:
+  print(f"`{t}` |", end = " ")
+
 ```
 
 ```{python}
-run = [word for word in tok1 if word == "run"]
-runs = [word for word in tok1 if word == "runs"]
-ran = [word for word in tok1 if word == "ran"]
-running = [word for word in tok1 if word == "running"]
+#| results: asis
+cry = ["cry", "cries", "crying", "cried", "crier"]
+
+print(
+  tabulate(
+    [[c, s_stemmer.stem(c)] for c in cry],
+    headers=["token", "stem"]
+  )
+)
 ```
 
+Also, when something like inflectional morphology makes a change to the stem, it won't get undone by the stemmer.
+
 ```{python}
-print(len(run))
-print(len(runs))
-print(len(ran))
-print(len(running))
+run = ["run", "runs", "running", "ran", "runner"]
+
+print(
+  tabulate(
+    [[r, s_stemmer.stem(r)] for r in run],
+    headers=["token", "stem"]
+  )
+)
+
 ```
+
+## Lemmatizing
+
+Lemmatizing involves a more complex morphological analysis of words, and as such requires language specific models to work.
+
+### nltk lemmatizing
+
+nltk uses [WordNet](https://wordnet.princeton.edu) for its English lemmatizing.
 
 ```{python}
 wnl = nltk.WordNetLemmatizer()
-[wnl.lemmatize(t) for t in run + ran + running]
 ```
 
 ```{python}
+#| results: asis
+print(
+  tabulate(
+    [[c, wnl.lemmatize(c)] for c in cry],
+    headers=["token", "lemma"]
+  )
+)
+```
+
+```{python}
+#| results: asis
+print(
+  tabulate(
+    [[r, wnl.lemmatize(r)] for r in run],
+    headers=["token", "lemma"]
+  )
+)
+```
+
+### spaCy lemmatizing
+
+spaCy has a number of models that do lemmatizing. They list WordNet along with a few other data sources for the model.
+
+```{python}
+import spacy
 nlp = spacy.load("en_core_web_sm")
 lemmatizer = nlp.get_pipe("lemmatizer")
-doc = nlp("I ran running runs")
 ```
 
 ```{python}
-for token in doc:
-  print(f"{token.text} - {token.lemma_}")
 
 ```
+
+```{python}
+doc = nlp(" ".join(cry))
+print(
+  tabulate(
+    [[c.text, c.lemma_] for c in doc],
+    headers=["token", "lemma"]
+  )
+)
+```
+
+```{python}
+doc = nlp(" ".join(run))
+print(
+  tabulate(
+    [[r.text, r.lemma_] for r in doc],
+    headers=["token", "lemma"]
+  )
+)
+```
+
+## The use of lemmatizing and stemming
+
+For a lot of the NLP tasks we're going to be learning about, lemmatizing and stemming don't factor in as much. However, they're useful tools to have handy when doing linguistic analyses. For example, for all of the importance of "word frequency" in linguistics literature, there's often not much clarity about how the text was pre-processed to get these word frequencies.

@@ -20,6 +20,8 @@ website:
             text: "Data Sparsity"
           - href: "lectures/data_processing/index.qmd"
             text: "Data processing"
+          - href: "lectures/data_processing/addendum.qmd"
+            text: "Data processing -- addendum"
       - section: "python sessions"
         contents:
           - href: "python_sessions/00_session1.qmd"
