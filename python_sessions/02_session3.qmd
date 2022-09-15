@@ -1,0 +1,242 @@
+---
+title: "Loops Etc."
+editor: visual
+author: "Josef Fruehwald"
+date: "2022-9-16"
+categories: 
+  - "python"
+---
+
+## Input - Output
+
+Python gets *really* useful when we stop typing our data into the script directly, and start reading it in programmatically. There are *lots* of kinds of files you might want to read into python, and sometimes specialized libraries are involved.
+
+::: callout-note
+We're not going to be dealing with many of these file formats, but just to keep your imaginations open about the kind of data you can read into python:
+
+#### json
+
+``` python
+# comes with python
+import json
+with open("file.json", "r") as f:
+  data = json.load(f)
+```
+
+#### yaml
+
+``` python
+# requires pip install pyyaml
+import yaml
+with open("file.yml", "r") as f:
+  data = yaml.safe_load(f)
+```
+
+#### tabular data
+
+``` python
+# requires pip install pandas
+import pandas as pd
+data = pd.read_csv("file.csv")
+```
+
+#### audio
+
+``` python
+# requires pip install librosa
+wav, sr = librosa.load("file.wav")
+```
+
+#### images
+
+``` python
+# requires pip install imageio
+import imageio
+data = imageio.imread("file.png")
+```
+:::
+
+To read in text data into python, we need to
+
+1.  Tell python where the file is (i.e. give it a path).
+2.  Tell python to open the file, and *how* to open the file.
+3.  Read in the file.
+
+> ##### 💡 TASK 1
+>
+> Add this to your `main.py` script (the indentation matters!)
+>
+> ``` python
+> file_path = "frankenstein"
+> with open(file_path, "r") as f:
+>    lines = f.readlines()
+> ```
+>
+> The object `lines` is now a list of all of the lines in Frankenstein.
+>
+> Assign the 55th line to a variable called `line55` and print it.
+
+## Scripting : next steps
+
+### Imports
+
+There is a lot of great functionality including in "base" python. However, we will usually want to access some functionality written by other people that is not included in the in basic python, in which case we'll need to import it using `import` followed by the name of the module we're importing.
+
+**It is usually best practice to put all imports at the TOP of your scripts**
+
+> ##### 💡 TASK 2
+>
+> Import both `nltk` and `re` in your `main.py` script `nltk` also requires a (one time) download, so add that as well
+>
+> ``` python
+> import nltk
+> import re
+> nltk.download('punkt')
+> ```
+
+#### Accessing functionality from the imports
+
+To access the functions of the modules we've just imported, we type out the name of the module, a dot, and the function we want to access. For example, the `re` module has functions for doing things with regular expressions, including one called `findall()`. To access this function, we would type `re.findall()`.
+
+> ##### 💡 TASK 3
+>
+> use the `word_tokenize()` function from `nltk` to tokenize the 55th line from Frankenstein. Assign the result to a variable called `tokens55`.
+
+::: callout-note
+#### Other import possibilities
+
+In order to save yourself some typing, you can tell python to import a module, and to call it by a different name with `import <> as <>`. For example, by social convention, people tend to import the pandas package as `pd`.
+
+``` python
+import pandas as pd
+data = pd.read_csv("file.csv")
+```
+
+You can also import one off functions from a module with `from <> import <>`. We could replace the pandas example with
+
+``` python
+from pandas import read_csv
+data = read_csv("file.csv")
+```
+
+Note, this *only* gives you access to the `read_csv()` function and nothing else from the pandas module.
+:::
+
+## Functions vs Methods
+
+There are (at least) two ways to interact with an object in python. The first is by passing the object to a *function*. For example, if we pass a string or a list to the `len()` function, it will tell us how long it is.
+
+> ##### 💡 TASK 4
+>
+> Get the length of `tokens55` with `len()` and assign it to the variable `len55`. Then add this print statement.
+>
+> ``` python
+> print(f"There are {len55} tokens in line 55")
+> ```
+
+Most objects in python also have associated *methods*. Methods are like functions that are bundled into objects, and get applied to those methods. We've already worked with methods like `.append()` to add a value to a list, or `.sort()` to sort a list.
+
+> ##### 💡 TASK 5
+>
+> We can all of the methods associated with an object with `dir()`. Print out the the results of
+>
+> ``` python
+> dir(tokens55)
+> ```
+
+The methods you'll most often want to use *don't* have `__` before and after their names.
+
+You can get help on how to use any method or function with `help()`. For example, to get help on `nltk.word_tokenize()` we would just add this to our script
+
+``` python
+help(nltk.word_tokenize)
+```
+
+> ##### 💡 TASK 6
+>
+> Using a mixture of `dir()` and `help()`, figure out how to use a method associated with `tokens55` to get the index of `"regarded"`. Assign this index to the variable `regard_idx` and add this print statement to your script.
+>
+> ``` python
+> print(f"The index of 'regarded' is {regard_idx}")
+> ```
+
+## Loops
+
+So far we've printed out an individual line from `lines`. If we wante to print out *every* line from Frankenstein, it would be a bad use of a compter to start listing
+
+``` python
+print(lines[0])
+print(lines[1])
+print(lines[2])
+print(lines[3])
+...
+```
+
+Instead, we can leverage computers' ability to do repetitive and boring tasks very fast with a `for` loop.
+
+> ##### 💡 TASK 7
+>
+> Put the following for loop in your script
+>
+> ``` python
+> for character in line55:
+>     print(character)
+> ```
+>
+> What happens?
+
+Let's break down what's happening here, step-by-step.
+
+1.  First, python knows it's going to be "looping over" the object `line55`.
+2.  It starts by taking the first value in `line55`, which is `"c"`.
+3.  It assigns this value to the variable `character`.
+4.  It runs whatever code is inside of the loop, in this case, `print(character)`.
+5.  It goes back to step 2), and gets the next value in `line55`, which is now `"o"`.
+6.  It assigns this value to the variable `character` ...
+
+And it will continue doing this until there are no more values to get out of `line55`.
+
+### Collecting results
+
+We can "collect" values from for loops by declaring a collector variable before the for loop, and then modifying it inside the loop.
+
+For example, if we wanted to get the total length, in characters, in the book, we wouldn't want to write it out this way:
+
+``` python
+total_len = 0
+total_len += len(lines[0])
+total_len += len(lines[1])
+total_len += len(lines[2])
+...
+```
+
+Instead, we'd want to write a `for` loop
+
+> ##### 💡 TASK 8
+>
+> Using a `for` loop, and looping over `lines`, tally up how many total characters there are in a variable called `total_len`.
+
+> ##### 💡 TASK 9
+>
+> Using a `for` loop, and looping over `lines`, collect all of the tokens you get from `nltk.word_tokenize()` in a single, flat list called `all_tok`.
+>
+> (hint: you'll have to initialize an empty list like this: `all_tok = []`)
+
+### Conditionals
+
+We can control the behavior of for loops a with `if` statements. Outside of the `for` loop context, we can see how `if` statements work.
+
+``` python
+doctor = "Frankenstein"
+monster = "Frankenstein's monster"
+if monster == "Frankenstein":
+  print("The monster is named Frankenstein")
+else:
+  print("Actually, it was the *doctor* who was named Frankenstein")
+```
+
+The comparison statement `monster == "Frankenstein`" returns a `True` or `False` value. When an `if` statement gets a `True` value, it runs the code inside its block. Otherwise, it just passes onto the rest of the script, or it runs code in an `else` block.
+
+> ##### 💡 TASK 10
+>
+> Initialize an empty list called `five_character`. Loop over the list of all tokens in `all_tok`. If a token has five characters, append it to `five_character`.

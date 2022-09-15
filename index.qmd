@@ -5,8 +5,9 @@ listing:
     - "**/*qmd"
   type: table
   sort: "date"
+  date-format: "YYYY-MM-DD"
   categories: true
-  fields: [image, date, title, categories]
+  fields: [date, file-modified, title, categories]
 ---
 
 Course materials for Fall 2022's Natural Language Processing Course at University of Kentucky.
