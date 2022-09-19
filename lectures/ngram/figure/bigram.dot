@@ -1,0 +1,17 @@
+digraph {rankdir=LR;a -> book [penwidth=3];
+a -> play [penwidth=3];
+i -> read [penwidth=2.4];
+i -> saw [penwidth=3.6];
+read -> a [penwidth=2];
+read -> the [penwidth=4];
+saw -> a [penwidth=1.2];
+saw -> the [penwidth=4.8];
+she -> read [penwidth=1.5];
+she -> wrote [penwidth=4.5];
+the -> book [penwidth=3.42857142857143];
+the -> dog [penwidth=1.71428571428571];
+the -> play [penwidth=0.857142857142857];
+we -> saw [penwidth=6];
+wrote -> a [penwidth=4];
+wrote -> the [penwidth=2];
+}

@@ -1,0 +1,16 @@
+digraph {
+rankdir=LR;
+	a -> book [penwidth=3, label=0.5];
+	a -> dog [penwidth=3, label=0.5];
+	book -> END [penwidth=6, label=1];
+	dog -> END [penwidth=6, label=1];
+	I -> read [penwidth=3, label=0.5];
+	I -> saw [penwidth=3, label=0.5];
+	read -> a [penwidth=6, label=1];
+	saw -> a [penwidth=3, label=0.5];
+	saw -> the [penwidth=3, label=0.5];
+	START -> I [penwidth=4, label=0.67];
+	START -> We [penwidth=2, label=0.33];
+	the -> dog [penwidth=6, label=1];
+	We -> saw [penwidth=6, label=1];
+}

@@ -1,0 +1,6 @@
+digraph {
+rankdir=LR;
+	i -> saw [penwidth=6];
+	saw -> the [penwidth=6];
+	the -> dog [penwidth=6];
+}

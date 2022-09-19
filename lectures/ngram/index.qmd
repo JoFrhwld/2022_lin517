@@ -1,0 +1,286 @@
+---
+title: "ngram Language Models"
+editor: visual
+author:
+  - name: Josef Fruehwald
+    url: https://jofrhwld.github.io/
+knitr: 
+  opts_chunk: 
+    echo: false
+    message: false
+bibliography: references.bib
+---
+
+```{r}
+#| echo: false
+library(tidyverse)
+```
+
+```{r}
+library(reticulate)
+reticulate::use_condaenv("./env")
+```
+
+I'm going to split up the "ngram model" materials into explaining how they work in principle, vs the how we have to make engineering decisions to make them work in reality.
+
+## Language Prediction
+
+When we are perceiving language, we are constantly and in real-time making predictions about what we are about to hear next. While we're going to be talking about this in terms of predicting the next word, It's been shown that we do this even partway through a word [@allopenna1998].
+
+So, let's say I spoke this much of a sentence to you:
+
+> I could tell he was angry from the tone of his\_\_\_
+
+And then a sudden noise obscured the final word, and you only caught part of it. Which of the following three words was I *probably* trying to say?
+
+a.  boys
+b.  choice
+c.  voice
+
+Your ability to guess which word it was is based on your i) experience with English turns of phrase and ii) the information in the context.
+
+One goal of Language Models is to assign probabilities across the vocabulary for what the next word will be, and hopefully assign higher probabilities to the "correct" answer than the "incorrect" answer. Applications for this kind of prediction range from speech-to-text (which could suffer from a very similar circumstance as the fictional one above) to autocomplete or spellcheck.
+
+## Using context (ngrams)
+
+In the example sentence above, one way we could go about trying to predict which word is most likely is to count up how many times the phrase "I could tell he was angry from the tone of his\_\_\_" is finished by the candidate words. Here's a table of google hits for the three possible phrases, as well as all hits for just the context phrase.
+
+|   "I could tell he was angry from the tone of his" | count |
+|---------------------------------------------------:|------:|
+|                                               boys |     0 |
+|                                             choice |     0 |
+|                                              voice |     3 |
+| *"I could tell he was angry from the tone of his"* |     3 |
+
+We're going to start diving into mathematical formulas now (fortunately the numbers are easy right now).
+
+To represent the count of a word or string of words in a corpus. We'll use $C(\text{word})$. So given the table above we have
+
+$$
+\displaylines{C(\text{I could tell he was angry from the tone of his})=3\\
+C(\text{I could tell he was angry from the tone of his boys})=0\\
+C(\text{I could tell he was angry from the tone of his choice})=0\\
+C(\text{I could tell he was angry from the tone of his voice})=3}
+$$
+
+To describe the probability that the next word is "choice" given that we've already heard "I could tell he was angry from the tone of his", we'll use the notation $P(\text{choice} | \text{I could tell he was angry from the tone of his})$. To *calculate* that probability, we'll divide the total count of the whole phrase by the count of the preceding context.
+
+$$
+P(\text{choice} | \text{I could tell he was angry from the tone of his}) = \frac{C(\text{I could tell he was angry by the tone of his choice})}{C(\text{I could tell he was angry by the tone of his})} = \frac{0}{3} = 0
+$$
+
+In fact, we can estimate the probability of an entire sentence with the *Probability Chain Rule*. The probability of a sequence of events like $P(X_1X_2X_3)$ can be estimated by multiplying out their conditional probabilities like so:
+
+$$
+P(X_1X_2X_3) = P(X_1)P(X_2|X_1)P(X_3|X_1X_2)
+$$
+
+Or, to use a phrase as an example:[^1]
+
+[^1]: Credit here to Kyle Gorman for introducing me to this example.
+
+$$
+P(\text{du hast mich gefragt})=P(\text{du})P(\text{hast}|\text{du})P(\text{mich}|\text{du hast})P(\text{gefragt}|\text{du hast mich})
+$$
+
+### Data Sparsity rears its head
+
+The problem with [data sparsity](../data_sparsity/data_sparsity.qmd) rears its head, though. As we can already see in the table above, long phrases, although *possible*, might not appear in any corpus, giving us a very unreliable probability estimate.
+
+Instead of using the *whole* history, we can use a smaller context in a more strictly defined window. So, instead of looking at the whole sentence, what if we looked at counts of just "of his" from the example sentence.
+
+| "of his" | count (in millions) |
+|---------:|--------------------:|
+|     boys |                 2.2 |
+|   choice |                14.2 |
+|    voice |                44.5 |
+| "of his" |             2,400.0 |
+
+$$
+\displaylines{
+P(\text{boys} | \text{of his}) = \frac{C(\text{of his boys)}}{C(\text{of his})}=\frac{2.2}{2400} = 0.0009\\
+P({\text{choice}|\text{of his}})= \frac{C(\text{of his choice)}}{C(\text{of his})}=\frac{14.2}{2400} = 0.005\\
+P({\text{voice}|\text{of his}})= \frac{C(\text{of his voice)}}{C(\text{of his})}=\frac{44.5}{2400} = 0.018}
+$$
+
+The continuation "voice" here is still *relatively* low probability, but has the highest probability of our candidate set.
+
+This is the basic approach of an ngram model. Instead of using all available words to calculate the probability of the next word, we'll approximate it with a smaller window. The example in the table above is a "trigram" model.
+
+::: callout-note
+## "gram" names
+
+unigram:
+
+:   Counting up every individual (1) word, and try to estimate the probability of word in isolation.
+
+bigram:
+
+:   Count up every sequence of two words, and try to estimate the probability of a word given just one word before it,
+
+trigram
+
+:   Count up every sequence of three words, and try to estimate the probability of a word given just the two words before it.
+
+"Trigrams" are the last n-gram with a special name. The rest are just called "4-gram" or "5-gram".
+:::
+
+```{r}
+library(tidytext)
+library(glue)
+
+tbl_to_dot <- function(tbl, file ="figure.dot"){
+  tbl %>%
+  mutate(id = 1:n()) %>%
+  unnest_tokens(words, sent, to_lower = F) %>%
+  group_by(id) %>%
+  mutate(nextw = lead(words)) %>%
+  group_by(words) %>%
+  mutate(n_tot = n()) %>%
+  group_by(words, nextw) %>%
+  mutate(n = n()) %>%
+  summarise(p = max(n/n_tot)) %>%
+  filter(!is.na(nextw)) %>%
+  mutate(edge = glue("{words} -> {nextw} [penwidth={p*6}, label={round(p, digits = 2)}];"))%>%
+  pull(edge) ->edges
+  
+  cat("digraph {\n", file = file)
+  cat("rankdir=LR;\n", file = file, append = T)
+  for(x in edges){
+    cat("\t", file = file, append = T)
+    cat(x, file = file, append = T)
+    cat("\n", file = file, append = T)
+  }
+  cat("}",file = file, append = T)
+  
+}
+```
+
+### Building up a bigram model
+
+Let's look at what happens as we gradually build up a bigram model we'll start with one sentence.
+
+    I saw the dog
+
+```{r}
+tibble(sent = c("START I saw the dog END")) %>%
+  tbl_to_dot(file = "figure/1sent.dot")
+```
+
+```{dot}
+//| file: figure/1sent.dot
+```
+
+    I saw the dog
+    We saw a dog
+
+```{r}
+tibble(sent = c("START I saw the dog END", "START We saw a dog END")) %>%
+  tbl_to_dot(file = "figure/2sent.dot")
+```
+
+```{dot}
+//| file: figure/2sent.dot
+```
+
+    I saw the dog
+    We saw a dog
+    I read a book
+
+```{r}
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END")) %>%
+  tbl_to_dot(file = "figure/3sent.dot")
+```
+
+```{dot}
+//| file: figure/3sent.dot
+```
+
+    I saw the dog
+    We saw a dog
+    I read a book
+    I saw a book
+    I saw a dog
+
+```{r}
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END",
+                "START I saw a book END",
+                "START I saw a dog END")) %>%
+  tbl_to_dot(file = "figure/5sent.dot")
+```
+
+::: {#fig-update .column-page layout-ncol="2"}
+```{dot}
+//| fig-responsive: true
+//| file: figure/3sent.dot
+//| fig-caption: "before update"
+```
+
+```{dot}
+//| fig-responsive: true
+//| file: figure/5sent.dot
+//| fig-caption: "After update"
+```
+
+Before and after update.
+:::
+
+```{r}
+frank <- read_csv("../data_sparsity/frank_words.csv") 
+```
+
+```{r}
+frank %>%
+  select(word) %>%
+  #slice(1:10000)%>%
+  mutate(next_word = lead(word)) %>%
+  count(word, next_word)->bigram
+```
+
+```{r}
+#| message: false
+bigram %>%
+  ungroup() %>%
+  mutate(word_f = factor(word),
+         word_n = as.numeric(reorder(word_f, X = -n, FUN = sum)),
+         next_f = factor(word),
+         next_n = as.numeric(reorder(next_word, X = -n, FUN = sum)))->bigram_idx
+
+```
+
+The rectangle represents a matrix, with the y-axis representing "from" words and the x-axis representing "to" words in Frankenstein. There *could* be a point in any location in the rectangle, representing a time that word $w_n$ followed word $w_{n-1}$. Each point represents a cell in that matrix where *any* data was observed.
+
+```{r}
+#| warning: false
+bigram_idx %>%
+  filter(n >0) %>%
+  ggplot(aes(next_n, word_n)) +
+    geom_rect(xmin = 0, xmax = max(bigram_idx$next_n, na.rm = T),
+              ymin = 0, ymax = -max(bigram_idx$word_n, na.rm = T),
+              fill = "grey80")+
+    geom_point(size = 0.2)+
+    scale_y_reverse()+
+    theme_void()+
+    coord_fixed()
+```
+
+```{python}
+#| eval: false
+import kenlm
+path = "/Users/joseffruehwald/software/ngram-lm/arpa/wiki-interpolate.3gram.arpa"
+model = kenlm.Model(path)
+```
+
+```{python}
+#| eval: false
+model.perplexity('colorless green ideas sleep furiously .')
+```
+
+```{python}
+#| eval: false
+model.perplexity("furiously sleep ideas green colorless .")
+```
