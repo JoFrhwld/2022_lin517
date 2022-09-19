@@ -5,6 +5,8 @@
 .Rprofile
 .DS_Store
 
+/env/
+/renv/
 /.quarto/
 **/*_files/
 **/*.html

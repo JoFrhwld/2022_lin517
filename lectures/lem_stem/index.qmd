@@ -51,7 +51,28 @@ We've still got the plural `cats` being counted as a separate word from `cat`, w
 
 ## Stemming
 
-Stemming is focused on cutting off morphemes and, to some degree, providing a consistent stem across all types that share a stem. So the outcomes aren't always a recognizable word,
+Stemming is focused on cutting off morphemes and, to some degree, providing a consistent stem across all types that share a stem. So the outcomes aren't always a recognizable word. The way it does this is all rule-based. For example, [the first step of the Porter stemmer contains the following rewrite rules](https://snowballstem.org/algorithms/porter/stemmer.html).
+
+    i.   sses -> ss
+    ii.  ies -> i
+    iii. ss -> ss
+    iv.  s -> 
+
+When a word comes into the first step, if its end matches any of the left hand sides, it will get re-written as the right hand side. If it could match multiple, the one it has the longest match with wins, so
+
+-   "passes" matches `i.` , so it gets rewritten as "pass"
+
+-   "pass" matches `iii.` and `iv.`, but has the largest overlap with `iii.` so it gets rewritten as "pass"
+
+-   "parties" matches `ii.`, so it gets rewritten as "parti"
+
+-   "pas" (as in "faux pas") matches `iv.` so it gets rewritten as "pa"
+
+-   "cats" matches `iv.` so it gets rewritten as "cats"
+
+This works basically correctly to the various /+z/ morphemes in English, but it over does it ("pas" should be left alone) and it produces some stems that don't *look* like the actual root word ("parti" vs "party").
+
+After this step, it contains a lot more hand crafted rules (e.g. `ational - > ate`).
 
 ```{python}
 from nltk.stem import PorterStemmer
@@ -75,6 +96,8 @@ for t in s_stemmed:
   print(f"`{t}` |", end = " ")
 
 ```
+
+Just to focus on how the stemmers operate over a specific paradigm:
 
 ```{python}
 #| results: asis
@@ -109,7 +132,7 @@ Lemmatizing involves a more complex morphological analysis of words, and as such
 
 ### nltk lemmatizing
 
-nltk uses [WordNet](https://wordnet.princeton.edu) for its English lemmatizing.
+nltk uses [WordNet](https://wordnet.princeton.edu) for its English lemmatizing. WordNet is a large database of lexical relations that have been hand annotated starting in the 1980s. Its outputs are always recognizable words.
 
 ```{python}
 wnl = nltk.WordNetLemmatizer()
@@ -146,10 +169,6 @@ lemmatizer = nlp.get_pipe("lemmatizer")
 ```
 
 ```{python}
-
-```
-
-```{python}
 #| results: asis
 doc = nlp(" ".join(cry))
 print(
@@ -173,4 +192,4 @@ print(
 
 ## The use of lemmatizing and stemming
 
-For a lot of the NLP tasks we're going to be learning about, lemmatizing and stemming don't factor in as much. However, they're useful tools to have handy when doing linguistic analyses. For example, for all of the importance of "word frequency" in linguistics literature, there's often not much clarity about how the text was pre-processed to get these word frequencies.
+For a lot of the NLP tasks we're going to be learning about, lemmatizing and stemming don't factor in as part of the pre-processing pipeline. However, they're useful tools to have handy when doing linguistic analyses. For example, for all of the importance of "word frequency" in linguistics literature, there's often not much clarity about how the text was pre-processed to get these word frequencies.
