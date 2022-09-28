@@ -40,6 +40,7 @@ format:
     fig-cap-location: margin
     include-in-header: googlefont.html
     mainfont: "'Atkinson Hyperlegible', sans-serif"
+    smooth-scroll: true
 
 editor: visual
 
