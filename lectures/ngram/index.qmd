@@ -1,6 +1,7 @@
 ---
 title: "ngram Language Models"
 editor: visual
+date: "2022-9-28"
 author:
   - name: Josef Fruehwald
     url: https://jofrhwld.github.io/
@@ -8,7 +9,12 @@ knitr:
   opts_chunk: 
     echo: false
     message: false
+format: 
+  html: 
+    smooth-scroll: true
 bibliography: references.bib
+freeze: auto
+description: "ngram langauge model notes. The structure of these notes broadly follows SLP V3. "
 ---
 
 ```{r}
@@ -228,6 +234,266 @@ tibble(sent = c("START I saw the dog END",
 
 Before and after update.
 :::
+
+## The probability of a sentence
+
+Another way to visualize the final state diagram from above is with a matrix, with the "from" words along the rows and the "to" words along the columns.
+
+```{r}
+#| results: 'asis'
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END",
+                "START I saw a book END",
+                "START I saw a dog END")) %>%
+  mutate(id = 1:n()) %>%
+  unnest_tokens(words, sent, to_lower = F) %>%
+  group_by(id) %>%
+  mutate(nextw = lead(words)) %>%
+  group_by(words) %>%
+  mutate(n_tot = n()) %>%
+  group_by(words, nextw) %>%
+  mutate(n = n()) %>%
+  summarise(p = max(n/n_tot)) %>%
+  ungroup() %>% 
+  drop_na() %>% 
+  complete(words, nextw) %>%
+  mutate(p = as.character(p)) %>%
+  replace_na(list(p = "<span style='color:grey'>0</span>")) %>%
+  pivot_wider(names_from = nextw, values_from = "p") %>%
+  knitr::kable()
+```
+
+There is a non-zero number for every arrow in the state diagram. Every *0* value in the table represents a possible bigram that wasn't observed (so, no arrow in the diagram).
+
+Given these bigram probabilities we estimated from the corpus *and* our assumption that we can approximate the probability of whole sentences with smaller ngram probabilities, we can estimate the probability of a new sentence like so:
+
+-   We saw the dog.
+
+```{=html}
+<style>
+    .bigrampath{
+    }
+    .bg1{
+      color: #440154; 
+    }
+    .bg2{
+      color: #3b528b; 
+    }
+    .bg3{
+      color: #21918c;
+    }
+    .bg4{
+      color: #5ec962;
+    }
+    .bg5{
+      color: #fde725;
+    }
+    .bigrampath tr:nth-child(7) td:nth-child(10){background : #440154; color: white;}
+    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b;  color: white;}
+    .bigrampath tr:nth-child(6) td:nth-child(9) {background :  #21918c; color: white;}
+    .bigrampath tr:nth-child(8) td:nth-child(4) {background :  #5ec962; }
+    .bigrampath tr:nth-child(3) td:nth-child(5) {background :  #fde725; }
+</style>
+```
+[P(We \| \<START\>)]{.bg1} $\times$ [P(saw \| We)]{.bg2} $\times$ [P(the \| saw)]{.bg3} $\times$ [P(the \| saw)]{.bg4} $\times$ [P(dog \| the)]{.bg5}
+
+::: bigrampath
+```{r}
+#| results: 'asis'
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END",
+                "START I saw a book END",
+                "START I saw a dog END")) %>%
+  mutate(id = 1:n()) %>%
+  unnest_tokens(words, sent, to_lower = F) %>%
+  group_by(id) %>%
+  mutate(nextw = lead(words)) %>%
+  group_by(words) %>%
+  mutate(n_tot = n()) %>%
+  group_by(words, nextw) %>%
+  mutate(n = n()) %>%
+  summarise(p = max(n/n_tot)) %>%
+  ungroup() %>% 
+  drop_na() %>% 
+  complete(words, nextw) %>%
+  mutate(p = as.character(p)) %>%
+  replace_na(list(p = "<span style='color:grey'>0</span>")) %>%
+  pivot_wider(names_from = nextw, values_from = "p") %>%
+  knitr::kable()
+```
+:::
+
+We can re-write the probability formula above like so:
+
+$$
+P(s) = \prod_{i=1}^n P(w_i|w_{i-1})
+$$
+
+We can also plug in the probabilities of these bigrams into the formula to get our estimated probility of the sentence.
+
+$$
+P(s) = 0.2 \times 1 \times 1\times 0.25 \times 1 = 0.05
+$$
+
+::: callout-note
+## Log probabilities
+
+Once you start multiplying probabilities, you're going to get smaller and smaller numbers.
+
+```{r}
+tibble(x = 0.5, n = 1:5) %>%
+  mutate(rep = map2(x, n, ~rep(.x, .y)),
+         rep_str = map(rep, ~paste0(.x, collapse = " × ")) %>% simplify(),
+         prod = x^n) %>%
+  transmute(this = rep_str,
+            ` ` = "=",
+            equals = prod) %>%
+  knitr::kable(digits = 3)
+```
+
+Even one very small probability (which you'll get sometimes) can start sending the overall estimate into infintesimally small numbers close to 0, which [computers may not be able to represent](https://en.wikipedia.org/wiki/Arithmetic_underflow).
+
+So, it's also common to see the log-probability (a.k.a. the log-likelihood, in this case) being calculated instead. The way logarithms work, you add together values that you would have multiplied in the probability space.
+
+$$
+\log(P(\text{We saw the dog}))=\log(P(\text{We | <START>})) +  \log(P(\text{saw | We}))+\dots
+$$
+
+$$
+\log(P(s)) = \sum_{i=1}^n \log(P(w_i|w_{i-1}))
+$$
+
+$$
+\log(P(s)) = -1.609438 + 0 + 0 + -1.386294 + 0 = -2.995732
+$$
+:::
+
+### Larger ngrams
+
+Language models that take a larger window of adjacent words (3, or 4 grams) work in the same way, and are more "accurate" but are harder to visualize.
+
+```{r}
+#| results: asis
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END",
+                "START I saw a book END",
+                "START I saw a dog END")) %>%
+  mutate(id = 1:n()) %>%
+  unnest_tokens(words, sent, to_lower = F) %>%
+  group_by(id) %>%
+  mutate(nextw1 = lead(words),
+         nextw2 = lead(words, n = 2)) %>%
+  group_by(words, nextw1) %>%
+  mutate(n_tot= n()) %>%
+  group_by(words, nextw1, nextw2) %>%
+  mutate(n = n()) %>%
+  summarise(p = max(n/n_tot)) %>%
+  drop_na()%>%
+  ungroup() %>%
+  complete(words, nextw1, nextw2)%>%
+  unite(prev, words, nextw1) %>%
+  mutate(p = as.character(p)) %>%
+  replace_na(list(p = "<span style='color:grey'>0</span>")) %>%
+  pivot_wider(names_from = nextw2, values_from = "p") %>%
+  knitr::kable(digits = 3)
+```
+
+## Generating text
+
+Once we've estimated all of these transition probabilities, we can turn them around to *generate* text, if we want. Let's take the final bigram "model" we had from before:
+
+```{dot}
+//| fig-responsive: true
+//| file: figure/5sent.dot
+```
+
+If we start at `<START>` and roll some dice, there's a 80% chance we'll move to `I` and a 20% chance we'll move to `We`.
+
+-   `<START>`
+
+    -   {{< fa dice-d20 >}} = 26
+
+    -   `We`
+
+        -   {{< fa dice-d20 >}} = 67
+
+        -   `saw`
+
+            -   {{< fa dice-d20 >}} = 67
+
+            -   `a`
+
+                -   {{< fa dice-d20 >}} = 67
+
+                -   `dog`
+
+                    -   {{< fa dice-d20 >}} = 23
+
+                    -   `<END>`
+
+Our bigram model on our boring corpus generates boring results. But here's the output of a tigram model estimated over *Frankenstein*.
+
+```{r}
+frank <- read_csv("../data_sparsity/frank_words.csv") 
+```
+
+<details>
+
+<summary>Details</summary>
+
+The version of the data I'm working with here hasn't been sentence-ized (so no `<START>` or `<BEGIN>` tags), and has also had punctuation stripped out ([see function here](https://juliasilge.github.io/tidytext/reference/unnest_tokens.html)). So after estimating the trigram probabilities, seed the generator by sampling over all trigrams, then progress by sampling over the distribution of $P(w_i|w_{i-2}w_{i-1})$.
+
+</details>
+
+```{r}
+#| echo: true
+#| code-fold: true
+#| code-summary: "Trigram R Code"
+frank %>%
+  select(word) %>%
+  mutate(nextw1 = lead(word),
+         nextw2 = lead(word, n = 2)) %>%
+  group_by(word, nextw1) %>%
+  mutate(n_tot = n()) %>%
+  group_by(word, nextw1, nextw2) %>%
+  mutate(n = n(),
+         p = n/n_tot) %>%
+  summarise(p = mean(p),
+            n = n())%>%
+  ungroup()->trigram
+```
+
+```{r}
+#| results: asis
+#| echo: true
+#| code-fold: true
+#| code-summary: "generator R Code"
+set.seed(517)
+generate_frankenstein <- function(trigram, n = 100){
+  trigram %>%
+    mutate(all_p = n/sum(n)) %>%
+    sample_n(size = 1, weight = all_p)->init_df
+  
+  init_vec <- c(init_df$word, init_df$nextw1, init_df$nextw2)
+  for(i in seq(n)){
+    hist = rev(rev(init_vec)[1:2])
+    trigram %>%
+      filter(word == hist[1],
+             nextw1 == hist[2]) %>%
+      sample_n(size = 1, weight = p) %>%
+      pull(nextw2) -> new_w
+      init_vec <- c(init_vec, new_w)
+  }
+  return(str_c(init_vec, collapse = " "))
+}
+
+cat(paste0("> ", generate_frankenstein(trigram, n = 100)))
+```
+
+## Sparsity, again
 
 ```{r}
 frank <- read_csv("../data_sparsity/frank_words.csv") 
