@@ -1,0 +1,425 @@
+---
+title: "Evaluating models"
+date: "2022-10-3"
+editor: visual
+knitr: 
+  opts_chunk: 
+    echo: false
+    message: false
+    error: false
+---
+
+```{r}
+library(tidyverse)
+library(scales)
+library(palmerpenguins)
+library(showtext)
+font_add_google("Atkinson Hyperlegible", "atkinson")
+showtext_auto()
+
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
+library(khroma)
+library(gutenbergr)
+library(tidytext)
+library(knitr)
+```
+
+Language Models ([including ngram models](../ngram/index.qmd#language-prediction)) are focused on "string prediction", meaning we need to evaluate them like we would any predictive model. In both statistics and machine learning, there are some conventionalized approaches to this task that we can discuss in general.
+
+::: callout-note
+## The code
+
+Unless indicated otherwise, the code shown in this lesson is R code. I'm using R code instead of Python, even though Python is the language we're learning in the course, because I'm more familiar with how to so what I want to show you in R.
+:::
+
+## Training vs testing
+
+The best way to evaluate a prediction model is to see how good its predictions are on some data that you already *know* what the predictions should be. The workflow, then, is
+
+1.  "Train" the model on a training data set.
+2.  "Test" the model on a test data set.
+
+Now, it's rarely the case that people collect and curate a large training dataset to train a model, then go out and collect and curate a whole nother test dataset to test the model's predictions. Instead, what they do is take their original dataset and split it into two pieces: "train" and "test". Usually, "train" contains most of the data (80% to 90%), while "test" is a smaller held-out dataset (10% to 20% of the data).
+
+### Why not train and test on the whole dataset?
+
+When the model is "learning" how to make its predictions, the values it learns to make those predictions with will always be dependent on the training data. For example, compare the mini-bigram models below, one based on *Frankenstein* and the other based on *Count of Monte Cristo*.
+
+```{r}
+dat <- gutenberg_download(c(84, 1184), 
+                          meta_fields = "title", 
+                          mirror = "https://mirror2.sandyriver.net/pub/gutenberg")
+
+```
+
+```{r}
+dat %>%
+  group_by(title) %>%
+  unnest_tokens(words, text) %>%
+  mutate(nextw = lead(words)) %>%
+  count(words, nextw) %>%
+  filter(words == "the") %>%
+  arrange(desc(n)) %>%
+  slice(1:5 ) -> top_the
+```
+
+::: {layout-ncol="2"}
+```{r}
+top_the %>%
+  filter(str_detect(title, "Frankenstein")) %>%
+  transmute(title = title,
+            word = words,
+         `next word` = nextw,
+         n  = n) %>%
+  kable()
+```
+
+```{r}
+top_the %>%
+  filter(str_detect(title, "Count")) %>%
+  transmute(title = title,
+            word = words,
+         `next word` = nextw,
+         n  = n) %>%
+  kable()
+```
+:::
+
+If we used the bigram model trained on *Frankenstein* to predict the most likely word to come after "the" on *Frankenstein* itself, we would do pretty well! But if we tried to use it to predict the most likely word to come after "the" in *The Count of Monte Cristo*, we'd do a lot worse! The highest frequency `the w` bigram in *The Count of Monte Cristo* (`the count`) doesn't even appear in *Frankenstein*.
+
+### Bias vs Variance
+
+This issue of the predictions of a model being too particularized to training data is related to the concept of the "Bias-Variance Tradeoff".
+
+-   High Bias, Low Variance: One way to think of a high-Bias model is that it "over simplifies" the relationships in the data, but it also means that it will generalize to new data sets in a way that's comparable to the training set.
+
+    -   high-Bias model of morphology: All past tense is formed by adding *-ed*. This will produce some errors for verbs like *run*, and *go*, but will generalize well to new verbs, like *yeet*.
+
+-   Low Bias, High Variance: A high-Variance model captures much more detail to the relationships in the data, but that means it might be "overfit" on the training data.
+
+    -   high-Variance model of morphology: You just have to memorize every *present* ➡️ *past* mapping verb by verb. This won't any errors on verbs we already know like *wait*, *run* or *go*, but won't generalize well to new verbs, like *yeet*.
+
+### Measuring error (or Loss)
+
+Inevitably, the model we're fitting will make predictions that are wrong, and then we need some way to quantify, or measure, how wrong the predictions were. The specific measure we use is going to depend a lot on the kind of prediction task we have, but some you might have already seen (or will see) are
+
+-   **M**ean **S**quared **E**rror, or MSE
+
+-   Cross Entropy
+
+-   F(1) score
+
+-   Accuracy
+
+-   BLEU score
+
+Often the numbers these scores put out aren't meaningful in and of themselves, but rather are used to compare models. But when you see a "score" or a "loss function" mentioned, understand it, generally, to be a measure of the difference between the values we expected in the test set, vs the values the model predicted.
+
+## A Linear Model example
+
+As a brief example, let's look at a data set of body measurements of penguins.
+
+![Artwork by \@allison_horst](assets/penguins.png){fig-align="center" width="328"}
+
+```{r}
+#| echo: true
+head(palmerpenguins::penguins)
+nrow(palmerpenguins::penguins)
+```
+
+We're going to look at two models that try to predict the bill length of these penguins, one trying to predict it based on body mass, and the other based on bill depth.
+
+```{r}
+#| label: fig-peng1
+#| fig-cap: "Body measurements of penguins"
+#| fig-subcap: 
+#|   - "Bill length predicted by body mass"
+#|   - "Bill length predicted by bill depth"
+#| layout-ncol: 2
+#| fig-width: 5
+#| fig-height: 5
+
+penguins %>%
+  drop_na() %>%
+  ggplot(aes(body_mass_g, bill_length_mm ))+
+    geom_point()+
+    scale_x_continuous(labels = label_comma())+
+    labs(x = "body mass (g)",
+         y = "bill length (mm)")
+
+penguins %>%
+  drop_na() %>%
+  ggplot(aes(bill_depth_mm, bill_length_mm ))+
+    geom_point()+
+    scale_x_continuous(labels = label_comma())+
+    labs(x = "bill depth (mm)",
+         y = "bill length (mm)",
+         title = "Palmer's Penguins")
+```
+
+First, well split the data into train and test sets. I'm going to choose a random 80% of the data to be the training set, and use remaining 20% to be the test set.
+
+```{r}
+#| echo: true
+set.seed(517)
+
+penguins_id <- penguins %>% 
+                  drop_na() %>%
+                  mutate(row_id = 1:n())
+train <- penguins_id %>%
+          slice_sample(prop = 0.8)
+test <- penguins_id %>%
+          filter(!row_id %in% train$row_id)
+nrow(train)
+nrow(test)
+```
+
+Now, I'll fit two linear models with the training set. The linear model is saying "the predicted bill length for a given predictor (body mass or bill depth) is whatever value is on the line."
+
+::: {#fig-train layout-ncol="2"}
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+train %>%
+  drop_na() %>%
+  ggplot(aes(body_mass_g, bill_length_mm ))+
+    geom_point()+
+    stat_smooth(method = 'lm', se = F)+
+    scale_x_continuous(labels = label_comma())+
+    labs(x = "body mass (g)",
+         y = "bill length (mm)",
+         title = "train")
+
+```
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+train %>%
+  drop_na() %>%
+  ggplot(aes(bill_depth_mm, bill_length_mm ))+
+    geom_point()+
+    stat_smooth(method = 'lm', se = F)+
+    scale_x_continuous(labels = label_comma())+
+    labs(x = "bill depth (mm)",
+         y = "bill length (mm)",
+         title = "train")
+```
+
+Models trained on `train`.
+:::
+
+These are both "High Bias" models. Hardly any of the points are exactly on the lines.
+
+Now, let's see how well these models perform on the held out test data.\\
+
+```{r}
+body_mod <- lm(bill_length_mm ~ body_mass_g, data = train)
+bill_mod <- lm(bill_length_mm ~ bill_depth_mm, data = train)
+
+test$body_pred <- predict(body_mod, newdata = test)
+test$bill_pred <- predict(bill_mod, newdata = test)
+```
+
+::: {#fig-test layout-ncol="2"}
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+test %>%
+  ggplot(aes(body_mass_g, bill_length_mm))+
+    geom_point(aes(color = "test data"))+
+    geom_point(aes(y = body_pred, color = "model prediction"))+
+    scale_x_continuous(labels = label_comma())+
+    scale_color_bright(name = NULL)+
+    labs(x = "body mass (g)",
+         y = "bill length (mm)",
+         title = "test")+
+    theme(legend.position = "top")
+```
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+test %>%
+  ggplot(aes(bill_depth_mm, bill_length_mm))+
+    geom_point(aes(color = "test data"))+
+    geom_point(aes(y = bill_pred, color = "model prediction"))+
+    scale_x_continuous(labels = label_comma())+
+    scale_color_bright(name = NULL)+
+    labs(x = "bill depth (mm)",
+         y = "bill length (mm)",
+         title = "test")+
+    theme(legend.position = "top")
+```
+
+Model performance on the test set
+:::
+
+It's kind of hard to see from just the figures which model performed better on the test set. To evaluate the error, or loss, of these models on the test set, I'll use the Mean Squared error, which is calculated like so:
+
+-   For every data point, subtract the predicted value from the actual value, to get the difference between the prediction and reality.
+
+-   Multiply each difference by itself, a.k.a. square it.[^1]
+
+-   Get the mean of these squared errors.
+
+[^1]: The point of doing this is to get a measure that is always positive. If for one data point actual-predicted = 2, then squaring it gets $2^2=4$. If another data point had an error of the same size, but in the opposite direction, then actual-predicted=-2, and squaring it gets us $-2^2=4$.
+
+In math terms, let's say
+
+-   $y_i$ is the *actual* value of some data point.
+
+-   $\hat{y}_i$ is the *predicted* value
+
+-   $N$ is the total number of data points.
+
+Then the mean squared error is
+
+$$
+\text{MSE} = \frac{\sum_{i=1}^N(y_i-\hat{y}_i)^2}{N}
+$$
+
+I'll show you the actual code I'm using to get the MSE, in case it demystifies the mathematical formula.
+
+```{r}
+#| echo: true
+diff_body        = test$bill_length_mm - test$body_pred
+square_diff_body = diff_body^2
+mse_body         = mean(square_diff_body)
+print(mse_body)
+
+diff_bill        = test$bill_length_mm - test$bill_pred
+square_diff_bill = diff_bill^2
+mse_bill         = mean(square_diff_bill)
+print(mse_bill)
+```
+
+It looks like the model predicting bill length using body mass has a smaller MSE than the model predicting bill length using bill depth. So if we had to choose between these two models, we'd go with the body mass model.
+
+## Precision, Recall, and F-Measure
+
+For NLP tasks, we're not usually trying to predict a continuous measure, but rather trying to categorize words, sentences, or documents. In these kinds of tasks, when we evalulate a model, we'll often want to use measures known as "Precision", "Recall" and "F-measure".
+
+To illustrate these measures, let's say we've built a robot to pick raspberries, and we want it to pick all of the ripe berries (if we leave any behind, they'll rot!) and none of the unripe berries (if we pick them before they're ripe, we've missed out on future berries!). Let's present the robot with this following scene that has 9 berries in the foreground. 5 of them are ripe and 4 of them are unripe.
+
+![](assets/raspberries.jpeg){fig-align="center" width="50%"}
+
+### Scenario 1: It picks all of the berries
+
+Let's say the robot picked all of the berries.
+
+| Picked                  | Unpicked |
+|-------------------------|----------|
+| [ripe berry]{.ripe}     |          |
+| [ripe berry]{.ripe}     |          |
+| [ripe berry]{.ripe}     |          |
+| [ripe berry]{.ripe}     |          |
+| [ripe berry]{.ripe}     |          |
+| [unripe berry]{.unripe} |          |
+| [unripe berry]{.unripe} |          |
+| [unripe berry]{.unripe} |          |
+| [unripe berry]{.unripe} |          |
+
+This strategy has high "Recall". There were a total of 5 ripe berries, and the robot picked all 5 of them.
+
+$$
+\text{recall} = \frac{\text{ripe picked berries}}{\text{ripe berries}} = \frac{5}{5} = 1
+$$ But, it has low "precision". Of all the berries it picked, a lot of them were unripe.
+
+$$
+\text{precision} = \frac{\text{ripe picked berries}}{\text{picked berries}} = \frac{5}{9} = 0.55
+$$
+
+The "F-measure" or "F1 score" is a way to combine the precision and recall score into one overall performance score.
+
+$$
+F_1 = 2\frac{\text{precision}\times \text{recall}}{\text{precision} + \text{recall}}=2\frac{0.55\times 1}{0.55 + 1}=2\frac{0.55}{1.55} = 0.71
+$$
+
+### Scenario 2: The robot picks only 1 ripe raspberry
+
+| Picked              | Unpicked                |
+|---------------------|-------------------------|
+| [ripe berry]{.ripe} |                         |
+|                     | [ripe berry]{.ripe}     |
+|                     | [ripe berry]{.ripe}     |
+|                     | [ripe berry]{.ripe}     |
+|                     | [ripe berry]{.ripe}     |
+|                     | [unripe berry]{.unripe} |
+|                     | [unripe berry]{.unripe} |
+|                     | [unripe berry]{.unripe} |
+|                     | [unripe berry]{.unripe} |
+
+This strategy has a very low recall. There are 5 ripe berries, and it has only picked 1 of them
+
+$$
+\text{recall} = \frac{\text{ripe picked berries}}{\text{ripe berries}} = \frac{1}{5} = 0.2
+$$ *But*, it has an extremely high precision. Of all of the berries it picked, it *only* picked ripe ones!
+
+$$
+\text{precision} = \frac{\text{ripe picked berries}}{\text{picked berries}} = \frac{1}{1} = 1
+$$ The very low precision winds up dragging down the overall F-measure. $$
+F_1 = 2\frac{\text{precision}\times \text{recall}}{\text{precision} + \text{recall}}=2\frac{1 \times 0.2}{1 + 0.2}=2\frac{0.2}{1.2} = 0.33
+$$
+
+### Scenario 3: The robot alternates between picking and not picking
+
+| Picked                  | Unpicked                |
+|-------------------------|-------------------------|
+| [ripe berry]{.ripe}     |                         |
+|                         | [ripe berry]{.ripe}     |
+| [ripe berry]{.ripe}     |                         |
+|                         | [ripe berry]{.ripe}     |
+| [ripe berry]{.ripe}     |                         |
+|                         | [unripe berry]{.unripe} |
+| [unripe berry]{.unripe} |                         |
+|                         | [unripe berry]{.unripe} |
+| [unripe berry]{.unripe} |                         |
+
+$$
+\text{recall} = \frac{\text{ripe picked berries}}{\text{ripe berries}} = \frac{3}{5} = 0.6
+$$
+
+$$
+\text{precision} = \frac{\text{ripe picked berries}}{\text{picked berries}} = \frac{3}{5} = 0.6
+$$
+
+$$
+F_1 = 2\frac{\text{precision}\times \text{recall}}{\text{precision} + \text{recall}}=2\frac{0.6 \times 0.6}{0.6 + 0.6}=2\frac{0.36}{1.2} = 0.6
+$$
+
+### A non-berry example
+
+One kind of NLP task is "**N**amed **E**ntity **R**ecognition" (NER), or detecting and identifying the kind of named entities in a text. Here's an example of `spaCy` doing that with a the sentence
+
+> Dr. Josef Fruehwald is teaching Lin517 at the University of Kentucky in the Fall 2022 semester.
+
+```{python}
+#| echo: true
+#| results: asis
+# python
+import spacy
+from spacy import displacy
+
+nlp = spacy.load("en_core_web_sm")
+
+
+text = "Dr. Josef Fruehwald is teaching Lin517 at the University of Kentucky in the Fall 2022 semester."
+
+doc = nlp(text)
+print(displacy.render(doc, style = 'ent'))
+```
+
+When looking at the original sentence, we could think of each word, or span of words, as a berry, and the named entities as the ripe berries. The precision and recall here would be
+
+$$
+\text{precision}=\frac{\text{named entitites identified}}{\text{identified words}}
+$$
+
+$$
+\text{recall}=\frac{\text{named entities identified}}{\text{named entities}}
+$$
+
+In this example, additional adjustments might need to be made for whether the *span* of the named entities is correct. `2022` is correctly a date, but maybe `Fall` should be included in its span. Also, it has identified `Lin517` as a **G**eo**P**olitical **E**ntity (GPE).
+
+## Edit Distance

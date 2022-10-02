@@ -5,7 +5,6 @@ format:
   html: default
   pdf:
     output-file: "notation"
-    output-ext: "pdf"
 author: "Josef Fruehwald"
 license: "CC BY-SA 4.0"
 date: "2022-8-20"

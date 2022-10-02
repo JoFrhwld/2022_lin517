@@ -24,7 +24,7 @@ library(tidyverse)
 
 ```{r}
 library(reticulate)
-reticulate::use_condaenv("./env")
+#reticulate::use_condaenv("./env")
 ```
 
 I'm going to split up the "ngram model" materials into explaining how they work in principle, vs the how we have to make engineering decisions to make them work in reality.
