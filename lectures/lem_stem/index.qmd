@@ -13,7 +13,7 @@ date: "2022-9-13"
 ```{r}
 #| echo: false
 library(reticulate)
-use_condaenv("./env")
+#use_condaenv("./env")
 ```
 
 ## What tokenizing does *not* get for you

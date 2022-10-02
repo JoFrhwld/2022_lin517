@@ -290,13 +290,13 @@ Given these bigram probabilities we estimated from the corpus *and* our assumpti
       color: #fde725;
     }
     .bigrampath tr:nth-child(7) td:nth-child(10){background : #440154; color: white;}
-    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b;  color: white;}
-    .bigrampath tr:nth-child(6) td:nth-child(9) {background :  #21918c; color: white;}
-    .bigrampath tr:nth-child(8) td:nth-child(4) {background :  #5ec962; }
-    .bigrampath tr:nth-child(3) td:nth-child(5) {background :  #fde725; }
+    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b; color: white;}
+    .bigrampath tr:nth-child(6) td:nth-child(9) {background : #21918c; color: white;}
+    .bigrampath tr:nth-child(8) td:nth-child(4) {background : #5ec962; }
+    .bigrampath tr:nth-child(3) td:nth-child(5) {background : #fde725; }
 </style>
 ```
-[P(We \| \<START\>)]{.bg1} $\times$ [P(saw \| We)]{.bg2} $\times$ [P(the \| saw)]{.bg3} $\times$ [P(the \| saw)]{.bg4} $\times$ [P(dog \| the)]{.bg5}
+[P(We \| \<START\>)]{.bg1} $\times$ [P(saw \| We)]{.bg2} $\times$ [P(the \| saw)]{.bg3} $\times$ [P(dog \| saw)]{.bg4} $\times$ [P(\<END\> \| dog)]{.bg5}
 
 ::: bigrampath
 ```{r}
@@ -414,23 +414,33 @@ If we start at `<START>` and roll some dice, there's a 80% chance we'll move to 
 
 -   `<START>`
 
-    -   {{< fa dice-d20 >}} = 26
+    -   
+
+        {{< fa dice-d20 >}} = 26
 
     -   `We`
 
-        -   {{< fa dice-d20 >}} = 67
+        -   
+
+            {{< fa dice-d20 >}} = 67
 
         -   `saw`
 
-            -   {{< fa dice-d20 >}} = 67
+            -   
+
+                {{< fa dice-d20 >}} = 67
 
             -   `a`
 
-                -   {{< fa dice-d20 >}} = 67
+                -   
+
+                    {{< fa dice-d20 >}} = 67
 
                 -   `dog`
 
-                    -   {{< fa dice-d20 >}} = 23
+                    -   
+
+                        {{< fa dice-d20 >}} = 23
 
                     -   `<END>`
 
@@ -471,7 +481,7 @@ frank %>%
 #| echo: true
 #| code-fold: true
 #| code-summary: "generator R Code"
-set.seed(517)
+#set.seed(517)
 generate_frankenstein <- function(trigram, n = 100){
   trigram %>%
     mutate(all_p = n/sum(n)) %>%

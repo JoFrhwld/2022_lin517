@@ -321,7 +321,12 @@ div.csl-indent {
 
 </div>
 <div class="cell">
-
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: The request to `use_python("/Users/joseffruehwald/Library/CloudStorage/
+OneDrive-UniversityofKentucky/Courses/Lin517/2022_fall/lin517_site/lectures/
+ngram/env/bin/python")` will be ignored because the environment variable
+RETICULATE_PYTHON is set to "/opt/anaconda3/envs/authoring/bin/python3.10"</code></pre>
+</div>
 </div>
 <p>I’m going to split up the “ngram model” materials into explaining how they work in principle, vs the how we have to make engineering decisions to make them work in reality.</p>
 <section id="language-prediction" class="level2">
@@ -1103,12 +1108,12 @@ We-&gt;saw
       color: #fde725;
     }
     .bigrampath tr:nth-child(7) td:nth-child(10){background : #440154; color: white;}
-    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b;  color: white;}
-    .bigrampath tr:nth-child(6) td:nth-child(9) {background :  #21918c; color: white;}
-    .bigrampath tr:nth-child(8) td:nth-child(4) {background :  #5ec962; }
-    .bigrampath tr:nth-child(3) td:nth-child(5) {background :  #fde725; }
+    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b; color: white;}
+    .bigrampath tr:nth-child(6) td:nth-child(9) {background : #21918c; color: white;}
+    .bigrampath tr:nth-child(8) td:nth-child(4) {background : #5ec962; }
+    .bigrampath tr:nth-child(3) td:nth-child(5) {background : #fde725; }
 </style>
-<p><span class="bg1">P(We | &lt;START&gt;)</span> <span class="math inline">\(\times\)</span> <span class="bg2">P(saw | We)</span> <span class="math inline">\(\times\)</span> <span class="bg3">P(the | saw)</span> <span class="math inline">\(\times\)</span> <span class="bg4">P(the | saw)</span> <span class="math inline">\(\times\)</span> <span class="bg5">P(dog | the)</span></p>
+<p><span class="bg1">P(We | &lt;START&gt;)</span> <span class="math inline">\(\times\)</span> <span class="bg2">P(saw | We)</span> <span class="math inline">\(\times\)</span> <span class="bg3">P(the | saw)</span> <span class="math inline">\(\times\)</span> <span class="bg4">P(dog | saw)</span> <span class="math inline">\(\times\)</span> <span class="bg5">P(&lt;END&gt; | dog)</span></p>
 <div class="bigrampath">
 <div class="cell-output-display">
 <table class="table">
@@ -2059,45 +2064,45 @@ Details
 <div class="cell">
 <details>
 <summary>Trigram R Code</summary>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>frank <span class="sc">%&gt;%</span></span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(word) <span class="sc">%&gt;%</span></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">nextw1 =</span> <span class="fu">lead</span>(word),</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">nextw2 =</span> <span class="fu">lead</span>(word, <span class="at">n =</span> <span class="dv">2</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(word, nextw1) <span class="sc">%&gt;%</span></span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_tot =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(word, nextw1, nextw2) <span class="sc">%&gt;%</span></span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n =</span> <span class="fu">n</span>(),</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>         <span class="at">p =</span> n<span class="sc">/</span>n_tot) <span class="sc">%&gt;%</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">p =</span> <span class="fu">mean</span>(p),</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>            <span class="at">n =</span> <span class="fu">n</span>())<span class="sc">%&gt;%</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="ot">-&gt;</span>trigram</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>frank <span class="sc">%&gt;%</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(word) <span class="sc">%&gt;%</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">nextw1 =</span> <span class="fu">lead</span>(word),</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">nextw2 =</span> <span class="fu">lead</span>(word, <span class="at">n =</span> <span class="dv">2</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(word, nextw1) <span class="sc">%&gt;%</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n_tot =</span> <span class="fu">n</span>()) <span class="sc">%&gt;%</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(word, nextw1, nextw2) <span class="sc">%&gt;%</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">n =</span> <span class="fu">n</span>(),</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>         <span class="at">p =</span> n<span class="sc">/</span>n_tot) <span class="sc">%&gt;%</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">p =</span> <span class="fu">mean</span>(p),</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>            <span class="at">n =</span> <span class="fu">n</span>())<span class="sc">%&gt;%</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()<span class="ot">-&gt;</span>trigram</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 </div>
 <details>
 <summary>generator R Code</summary>
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">517</span>)</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>generate_frankenstein <span class="ot">&lt;-</span> <span class="cf">function</span>(trigram, <span class="at">n =</span> <span class="dv">100</span>){</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  trigram <span class="sc">%&gt;%</span></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">all_p =</span> n<span class="sc">/</span><span class="fu">sum</span>(n)) <span class="sc">%&gt;%</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sample_n</span>(<span class="at">size =</span> <span class="dv">1</span>, <span class="at">weight =</span> all_p)<span class="ot">-&gt;</span>init_df</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  init_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(init_df<span class="sc">$</span>word, init_df<span class="sc">$</span>nextw1, init_df<span class="sc">$</span>nextw2)</span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq</span>(n)){</span>
-<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    hist <span class="ot">=</span> <span class="fu">rev</span>(<span class="fu">rev</span>(init_vec)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>])</span>
-<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    trigram <span class="sc">%&gt;%</span></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(word <span class="sc">==</span> hist[<span class="dv">1</span>],</span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>             nextw1 <span class="sc">==</span> hist[<span class="dv">2</span>]) <span class="sc">%&gt;%</span></span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">sample_n</span>(<span class="at">size =</span> <span class="dv">1</span>, <span class="at">weight =</span> p) <span class="sc">%&gt;%</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">pull</span>(nextw2) <span class="ot">-&gt;</span> new_w</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>      init_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(init_vec, new_w)</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  }</span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">str_c</span>(init_vec, <span class="at">collapse =</span> <span class="st">" "</span>))</span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">"&gt; "</span>, <span class="fu">generate_frankenstein</span>(trigram, <span class="at">n =</span> <span class="dv">100</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co">#set.seed(517)</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>generate_frankenstein <span class="ot">&lt;-</span> <span class="cf">function</span>(trigram, <span class="at">n =</span> <span class="dv">100</span>){</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  trigram <span class="sc">%&gt;%</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">all_p =</span> n<span class="sc">/</span><span class="fu">sum</span>(n)) <span class="sc">%&gt;%</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sample_n</span>(<span class="at">size =</span> <span class="dv">1</span>, <span class="at">weight =</span> all_p)<span class="ot">-&gt;</span>init_df</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>  init_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(init_df<span class="sc">$</span>word, init_df<span class="sc">$</span>nextw1, init_df<span class="sc">$</span>nextw2)</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="fu">seq</span>(n)){</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    hist <span class="ot">=</span> <span class="fu">rev</span>(<span class="fu">rev</span>(init_vec)[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>])</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    trigram <span class="sc">%&gt;%</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>      <span class="fu">filter</span>(word <span class="sc">==</span> hist[<span class="dv">1</span>],</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>             nextw1 <span class="sc">==</span> hist[<span class="dv">2</span>]) <span class="sc">%&gt;%</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>      <span class="fu">sample_n</span>(<span class="at">size =</span> <span class="dv">1</span>, <span class="at">weight =</span> p) <span class="sc">%&gt;%</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">pull</span>(nextw2) <span class="ot">-&gt;</span> new_w</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>      init_vec <span class="ot">&lt;-</span> <span class="fu">c</span>(init_vec, new_w)</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(<span class="fu">str_c</span>(init_vec, <span class="at">collapse =</span> <span class="st">" "</span>))</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="fu">paste0</span>(<span class="st">"&gt; "</span>, <span class="fu">generate_frankenstein</span>(trigram, <span class="at">n =</span> <span class="dv">100</span>)))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <blockquote class="blockquote">
-<p>grief had given me greater pleasure than i possess to bear me on the valley as i approached this tremendous being i dared to be endured in the world never before saw equalled look at that instant my father made no reproach in his ugliness i attempted to carry him into the world was now a blot upon the mountain it is nevertheless true a youngster who but a conversation that i held but of little avail my revenge is of no avail when i returned it was already eaten and the sound of footsteps along the sands he struck his foot against</p>
+<p>to procure the implements of writing and the world and you will not listen to me the rest of the best means of revenge enkindled in my study day and the world was to enter the cottages allured my appetite acorns and berries afford me respite from thought and feeling but i soon learned that the sailors were persuading to enter on the ground i must travel in a recess of the evil influence the angel of destruction and infallible misery learn from me in an innocent half painful self deceit to call them some time experienced if you were my reflections as</p>
 </blockquote>
 </section>
 <section id="sparsity-again" class="level2">

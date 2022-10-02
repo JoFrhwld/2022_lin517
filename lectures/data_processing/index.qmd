@@ -15,7 +15,7 @@ Before we even get to substantive issues of "text normalization" and "tokenizati
 ```{r}
 #| echo: false
 library(reticulate)
-use_condaenv("./env")
+#use_condaenv("./env")
 ```
 
 ```{python}
@@ -485,19 +485,23 @@ The python library `sentencepiece` has a method for training a BPE tokenizer. We
 
 ```{python}
 import gutenbergpy.textget
+from gutenbergpy.gutenbergcache import GutenbergCacheSettings
 import sentencepiece as spm
 
+GutenbergCacheSettings.set(TextFilesCacheFolder = "gen/texts/")
+
 raw_book = gutenbergpy.textget.get_text_by_id(84)
+
 clean_book  = gutenbergpy.textget.strip_headers(raw_book)
-with open("texts/frank.txt", 'wb') as file:
+with open("gen/texts/frank.txt", 'wb') as file:
   x = file.write(clean_book)
   file.close()
 
 ```
 
 ```{python}
-spm.SentencePieceTrainer.train(input = "texts/frank.txt", 
-                               model_prefix = "m",
+spm.SentencePieceTrainer.train(input = "gen/texts/frank.txt", 
+                               model_prefix = "gen/m",
                                vocab_size = 1000, 
                                model_type = "bpe")
 ```
@@ -505,7 +509,7 @@ spm.SentencePieceTrainer.train(input = "texts/frank.txt",
 The code above trained the tokenizer and saved it as a model. Here we'll load it and run it on a sample paragraph to look at the output.
 
 ```{python}
-sp = spm.SentencePieceProcessor(model_file='m.model')
+sp = spm.SentencePieceProcessor(model_file='gen/m.model')
 ```
 
 ```{python}
@@ -529,7 +533,7 @@ Why tokenize things this way? On the one hand, we wind up with tokens that don't
 #| echo: false
 
 from nltk.tokenize import word_tokenize
-with open("texts/frank.txt", 'r') as file:
+with open("gen/texts/frank.txt", 'r') as file:
   lines = file.readlines()
 
 all_lines = "".join(lines)
