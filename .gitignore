@@ -5,6 +5,7 @@
 .Rprofile
 .DS_Store
 
+gen/
 env/
 renv/
 /.quarto/
