@@ -1,0 +1,160 @@
+---
+title: "Making and Counting Bigrams"
+editor: visual
+author: Josef Fruehwald
+date: 2022-09-30
+categories: 
+  - "python"
+---
+
+# Instructions
+
+The goal is, for a given book, find 
+
+- The token *most likely* to follow "the". What is its conditional probability?
+- What is that token's *overall* probability in the book?
+- How much does knowing the preceding word is "the" boost that token's probability vs not know what the preceding word is?
+
+## How to download a book
+
+I've written the [`getbook.py`](assets/getbook.py) script for you to be able to quickly download a book from project gutenberg with the header and license info stripped out. You can use it like this, in the shell:
+
+```bash
+# bash
+python getbook.py 84 frankenstein.txt
+```
+
+## Some pythonic strategies
+
+### Megastrings
+After reading in a book (and potentially `.strip()`ing off leading and trailing whitespace), you'll need to glue all of the lines together into one big megastring for tokenizing. You can do that like so:
+
+```{{python}}
+megastring = " ".join(book_lines)
+```
+
+### Counting things
+
+There's a convenient function called `collections.Counter()` that counts how many things are in a list, and returns a dictionary keyed by the values it counted, with its values as the dictionary values.
+
+```{python}
+#python
+from collections import Counter
+
+letters = ["a", "a", "b", "b", "b"]
+letters_c = Counter(letters)
+
+print(letters_c)
+
+print(letters_c["b"])
+```
+
+You can also get the most common value from the counting dictionary with `.most_common(1)`. This returns a list of "tuples"
+
+```{python}
+# python
+print(letters_c.most_common(1))
+```
+
+
+## Some `nltk` strategies
+
+`nltk` has a few functions that will make this go easier.
+
+#### Side note 
+
+You *might* need to run `nltk.download('punkt')` 
+
+### Sentence "tokenizing"
+
+In a long paragraph or a "megastring", if we want bigram counts that are sensitive to sentence boundaries, that means we need to first split it up into sentences. We can do that with `ntlk.sent_tokenize()`
+
+```{python}
+import pprint
+pp = pprint.PrettyPrinter(indent = 2)
+```
+
+
+```{python}
+# python
+from nltk import sent_tokenize
+
+
+para = "This is a sentence. This is a sentence too. Is this?"
+sentences = sent_tokenize(para)
+pp.pprint(sentences)
+```
+
+### Word tokenizing
+
+Don't forget to tokenize sentences into words
+
+```{python}
+# python
+from nltk import word_tokenize
+
+sentence_words = [word_tokenize(sent) for sent in sentences]
+pp.pprint(sentence_words)
+```
+
+### Sentence *padding*
+
+We'll also want to put start-of-sentence and end-of-sentence padding on each sentence, which we can do with `nltk.lm.preprocessing.pad_both_ends()`
+
+```{python}
+# python
+
+from nltk.lm.preprocessing import pad_both_ends
+
+# n = 2 because we're *going* to do bigrams
+# pad_both_ends returns a special object we're
+# converting to a list, just to see what's happening
+sentence_padded = [list(pad_both_ends(sent, n = 2)) 
+                     for sent in sentence_words]
+pp.pprint(sentence_padded)
+
+```
+
+### Bigrams!!
+
+We (finally!) get the bigrams in each sentence `nltk.bigrams()`.
+
+```{python}
+# python
+from nltk import bigrams
+
+# Again, bigrams() returns a special object we're
+# converting to a list
+sent_bg = [list(bigrams(sent)) 
+             for sent in sentence_padded]
+pp.pprint(sent_bg)
+```
+
+### One big list
+
+Before you try counting anything, you're going to need to "flatten" this list of lists into just one flat list of all of the bigrams.
+
+```
+left as an exercise to the reader.
+```
+
+## Conditional Probability
+
+When I find the "conditional probability" of the most common word following "the", what I mean is "What is the probability of the word w, given that we just had 'the'?". Or, to put it in math terms $P(w | \text{the})$.
+
+The conditional probability $P(w | \text{the})$ is equal to the *joint* probability of P(the, w) (a.k.a. the probability of that bigram out of all bigrams) divided by the probability of just "the", $P(\text{the})$.
+
+$$
+P(w|\text{the}) = \frac{P(\text{the}~w)}{P(\text{the})}
+$$
+
+To get the probablity of $P(\text{the}~w)$, you'll need to divide the count of "the *w*" by the count of all bigram tokens (*hint*: this is just how long the list of bigrams is.)
+
+To get the probability of just "the", you'll actually have to get a separate count of just all individual tokens, count how frequent "the" is, and divide that by the number of total tokens.
+
+## Strategy
+
+Take a moment or two to list out each piece of code or information you're going to need to get to do this project, at a high level. It doesn't need to be complete, and you'll probably come back to this list and revise it. But having a list like this will help guide you to what the next step in the process is.
+
+
+

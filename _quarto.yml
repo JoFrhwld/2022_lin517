@@ -24,12 +24,15 @@ website:
             text: "Data processing -- addendum"
           - href: "lectures/lem_stem/index.qmd"
             text: "Lemmatizing and stemming"
+          - href: "lectures/ngram/index.qmd"
+          - href: "lectures/evaluation/index.qmd"
       - section: "python sessions"
         contents:
           - href: "python_sessions/00_session1.qmd"
-            text: "Session 1"
           - href: "python_sessions/01_session2.qmd"
-            text: "Session 2"
+          - href: "python_sessions/02_session3.qmd"
+          - href: "python_sessions/03_session4.qmd"
+          - href: "python_sessions/04_session5.qmd"
   page-navigation: true
   
 format:

@@ -1,0 +1,221 @@
+---
+title: "Comprehensions and Useful Things"
+editor: visual
+author: Josef Fruehwald
+date: 2022-09-23
+categories: 
+  - "python"
+---
+
+# Instructions
+
+## Setup
+
+We're going to be exploring the way the `spaCy` package does tokenization.
+
+If you get an error at the very beginning when hitting Run, run this code to download the `spaCy` model in the shell.
+
+``` bash
+# bash
+python -m spacy download en_core_web_sm
+```
+
+Currently, the code in `main.py`
+
+1.  loads the `spaCy` English model
+2.  reads in *Frankenstein*
+3.  Strips leading whitespace from the beginning and end of each line
+4.  Concatenates all of the lines into one megastring
+5.  Uses the `spaCy` analyzer to (among other things) tokenize the book.
+
+```{python}
+import spacy
+from collections import Counter
+from collections import defaultdict
+
+# Load the spaCy english model
+nlp = spacy.load("en_core_web_sm")
+
+# open and read in Frankenstein
+with open("gen/texts/frank.txt", 'r') as f:
+  lines = f.readlines()
+
+# Remove leading and trailing whitespaces
+lines = [line.strip() for line in lines]
+
+# concatenate frankenstein into one huge string
+frank_one_string = " ".join(lines)
+
+# Tokenize all of frankenstein
+frank_doc = nlp(frank_one_string)
+
+print(frank_doc[500:600])
+
+```
+
+## Spacy token structure
+
+We can treat `frank_doc` like a list, but it's actually a special data structure. The same goes for each token inside `frank_doc`. If you just say
+
+```{python}
+print(frank_doc[506])
+```
+
+It will print `conjectures`. But if you say
+
+```{python}
+print(
+  dir(frank_doc[506])
+)
+```
+
+You'll see a *lot* more values and methods associated with the token than you normally would for a string. For example, `frank_doc[506].text` will give us the text of the token, and `frank_doc[506].lemma_` will give us the lemma.
+
+```{python}
+print(
+  f"The word '{frank_doc[506].text}' is lemmatized as '{frank_doc[506].lemma_}'"
+)
+```
+
+Or we can get the guessed part of speech with `frank_doc[506].pos_`
+
+```{python}
+print(
+  f"The word '{frank_doc[506].text}' is given the part of speech '{frank_doc[506].pos_}'"
+)
+```
+
+Or we can pull out the guessed morphological information:
+
+```{python}
+print(
+  f"spacy guesses '{frank_doc[506].text}' is '{frank_doc[506].morph}'"
+)
+```
+
+## if-statements to control code (like loops)
+
+We can use `if` statements to control how our code runs. An `if` statement checks to see if its logical comparison is true, and if it is, it executes its code.
+
+```{python}
+## This is not true, so it dosn't print
+if frank_doc[506].pos_ == "NOUN":
+  print("it's a verb!")
+
+## This is true, so it prints
+if frank_doc[506].pos_ == "VERB":
+  print("it's a verb!")
+```
+
+:::{.callout-note}
+> ##### 💡 TASK 1
+> Print the `.text` of every word whose `.lemma_` is `"monster"`
+:::
+
+:::{.callout-note}
+> ##### 💡 TASK 2
+> With a for loop, create a list called `five_letter` which contains every 5 letter word from the book (a.k.a. `.text` is 5 characters long.)
+:::
+
+## Comprehensions
+
+"Comprehensions" are a great shortcut around writing out a whole for loop. Let's take the following list:
+
+```{python}
+rain_list = "The rain in Spain stays mainly on the plain".split(" ")
+print(rain_list)
+```
+
+If I wanted to capitalize all of those words, one way I could do it is with a for loop
+
+```{python}
+upper_rain = []
+for word in rain_list:
+  upper_rain.append(word.upper())
+
+print(upper_rain)
+```
+
+Alternatively, I could do it with a "list comprehension":
+
+```{python}
+upper_rain2 = [word.upper() for word in rain_list]
+
+print(upper_rain2)
+```
+
+List comprehensions keep the `for word in rain_list` part the same, but instead of needing to initialize a whole empty list, we wrap the whole thing inside `[ ]`, which tells python we're going to capture the results inside a list. The variable (& whatever we do to it) at the beginning of the command is what gets captured.
+
+We can use `if` statements too.
+
+```{python}
+ai_words = [word for word in rain_list if "ai" in word]
+
+print(ai_words)
+```
+
+We can even have *nested* for statements
+
+```{python}
+rain_list = "The rain in Spain stays mainly on the plain".split(" ")
+letters = [letter
+            for word in rain_list
+              for letter in word]
+print(letters)
+```
+
+:::{.callout-note}
+> ##### 💡 TASK 3
+> With a *list comprehension*, create a list called `five_letter2` which contains every 5 letter word from the book (a.k.a. `.text` is 5 characters long.)
+:::
+
+:::{.callout-note}
+> ##### 💡 TASK 4
+> By whatever means necessary (but I recommend using a list comprehension), create a list containing all of the words with a `VERB` as `.pos`
+:::
+
+## `set()`
+
+A `set` is another special python data structure that, among other things, will "uniquify" a list.
+
+```{python}
+bman_list = "na na na na na na na na na na na na na na na na Batman".split(" ")
+bman_set = set(bman_list)
+print(bman_set)
+```
+
+:::{.callout-note}
+> ##### 💡 TASK 5
+> Find out how many total words there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
+:::
+
+:::{.callout-note}
+> ##### 💡 TASK 6
+> Find out how many total *unique* words (`.text`) there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
+:::
+
+:::{.callout-note}
+> ##### 💡 TASK 7
+> Find out how many total *unique* lemmas (`.lemma_`) there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
+:::
+
+## `Counter()`
+
+There is a handy dandy function called `Counter` that we can import from the `collections` module like so
+
+```{python}
+from collections import Counter
+```
+
+When we pass `Counter()` a list, it will return a dictionary of counts of items in that list.
+
+```{python}
+bman_list = "na na na na na na na na na na na na na na na na Batman".split(" ")
+bman_count = Counter(bman_list)
+print(bman_count)
+```
+
+:::{.callout-note}
+> ##### 💡 TASK 8
+> Create a counter dictionary of all of the forms of "be" (`.lemma == "be"`) in *Frankenstein*
+:::
