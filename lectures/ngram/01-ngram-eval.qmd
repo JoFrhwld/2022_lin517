@@ -1,0 +1,356 @@
+---
+title: "ngrams - Perplexity"
+editor: visual
+date: "2022-10-10"
+author:
+  - name: Josef Fruehwald
+    url: https://jofrhwld.github.io/
+knitr: 
+  opts_chunk: 
+    echo: false
+    message: false
+format: 
+  html: 
+    smooth-scroll: true
+bibliography: references.bib
+freeze: auto
+description: "Ok, here comes some math"
+---
+
+```{r}
+library(tidyverse)
+library(showtext)
+
+font_add_google("Atkinson Hyperlegible", "atkinson")
+showtext_auto()
+
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
+
+library(tidytext)
+```
+
+## Evaluating NGram Models
+
+NGram Models are often described in terms of their **perplexity**, which is a technical term from Information Theory. Rather than just dump the formula in here, let's walk through it, since these information theoretic notions kind of keep coming up.
+
+## Information - In Bits
+
+### From bits to probability - a light switch analogy
+
+#### One light switch
+
+Let's say we have a house with one room, and that one room has one light switch, and that light switch could be on {{< fa toggle-on >}} or off {{< fa toggle-off >}}. Here's a table of all of the possible lighting states of the house:
+
+| Lighting Config |       Switch 1        |
+|-----------------|:---------------------:|
+| on              | {{< fa toggle-on >}}  |
+| off             | {{< fa toggle-off >}} |
+
+: Lighting configurations, 1 switch
+
+With just 1 switch, we have two possible lighting configurations. If each lighting configuration was equally possible, then the probability of seeing either lighting configuration is 0.5. In information theory terms, our switch is a "bit" (just like the computer bit), and you need 1 bit to represent a 50% probability.
+
+$$
+1\text{bit} = 2~\text{states} = \frac{1}{2} \text{probability} = 0.5
+$$
+
+#### Two light switches
+
+Now, if our house had two rooms, (a living room and a kitchen), and each room had a switch, we can also workout how many different lighting configurations there are for the whole house.
+
+| lighting configurations      |  Living Room Switch   |    Kitchen Switch     |
+|----------------------------|:--------------------:|:--------------------:|
+| living room on, kitchen on   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
+| living room on, kitchen off  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
+| living room off, kitchen on  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
+| living room off, kitchen off | {{< fa toggle-off >}} | {{< fa toggle-off >}} |
+
+: Lighting configurations, 2 switches
+
+With 2 switches, we can describe 4 different lighting configurations in the house. And again, if every lighting configuration was equally likely, that means there is a $\frac{1}{4}=0.25$ probability we are describing with these two bits.
+
+$$
+2\text{bits} = 4~\text{states}=\frac{1}{4}=0.25
+$$
+
+#### Three Light switches
+
+Let's add 1 more room to the house (and then we'll stop) that also has a switch. Here's the table of house lighting configurations.
+
+| lighting configuration                    |  Living Room Switch   |    Kitchen Switch     |    Bedroom Switch     |
+|------------------|:----------------:|:----------------:|:----------------:|
+| living room on, kitchen on, bedroom on    | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
+| living room on, kitchen on, bedroom off   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
+| living room on, kitchen off, bedroom on   | {{< fa toggle-on >}}  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
+| living room on, kitchen off, bedroom off  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} | {{< fa toggle-off >}} |
+| living room off, kitchen on, bedroom on   | {{< fa toggle-off >}} | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
+| living room off, kitchen on, bedroom off  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
+| living room off, kitchen off, bedroom on  | {{< fa toggle-off >}} | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
+| living room off, kitchen off, bedroom off | {{< fa toggle-off >}} | {{< fa toggle-off >}} | {{< fa toggle-off >}} |
+
+With 3 switches, we can describe 8 different house light configurations
+
+$$
+3\text{bits} = 8~\text{states} = \frac{1}{8} = 0.125
+$$
+
+#### N Light switches
+
+There is a *general* formula for figuring out how many states can be described by N bits, and therefore the probability of events they can represent.
+
+$$
+N~\text{bits} = 2^N ~\text{states} = \frac{1}{2^N}~\text{probability}
+$$
+
+The number 2 got in there because that's how many different options there are for each switch (on {{< fa toggle-on >}} or off {{< fa toggle-off >}}).
+
+## From probability to bits (a.k.a. "surprisal")
+
+Ok, what if we didn't know how many bits, or switches we had, but we knew the *probability* of something, and we want to know how many bits we need to represent that probability. For example, maybe we estimated the unigram probability of "the" in the novel Frankenstein.
+
+```{r}
+frank <- read_csv("../data_sparsity/frank_words.csv") 
+```
+
+```{r}
+#| echo: true
+#| filename: "R"
+frank %>%
+  count(word) %>%
+  mutate(prob = n/sum(n)) %>%
+  filter(word == "the")
+```
+
+We're in a classic math word problem: Solve for N
+
+$$
+0.056 = \frac{1}{2^N}
+$$
+
+I've put the math steps to work this out in the collapsed Details block below, but to get N here, we need to take the negative $\log_2$ of the probability
+
+<details>
+
+$$
+\frac{1}{2^N} = 2^{-N}
+$$
+
+$$
+\log_2(2^{-N}) = -N
+$$
+
+$$
+-\log_2(2^{-N}) = N
+$$
+
+</details>
+
+$$
+N = -\log_2(0.056) = 4.16
+$$
+
+We've obviously moved away from the concrete analogy of light switches, since it's impossible to have 4 and 0.16 switches in your house. But this *is* a measure of how much *information* the probability takes up. It's also often called **surprisal** as a technical term.
+
+### Why "Surprisal"
+
+Imagine I came up to you and said:
+
+> The sun rose this morning.
+
+That's not especially *informative* or *surprising*, since the sun rises every morning. The sun rising in the morning is a very high probability event,[^1] so it's not surprising it happens, and in the information theory world, we don't need very many bits for it.
+
+[^1]: Depending on what latitude you live at and the time of year.
+
+On the other hand, if someone came up to me and said:
+
+> The sun failed to rise this morning.
+
+*That* is surprising! It's also very informative. Thank you for telling me! I wasn't expecting that! The smaller the probability of an event, the more surprising and informative it is if it happens, the larger the *surprisal* value is.
+
+Here's a plot showing the relationship between the unigram probability of a word in *Frankenstein*, and its surprisal in *bits*.
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+#| fig-align: center
+frank %>%
+  count(word) %>%
+  arrange(desc(n)) %>%
+  mutate(prob = n/sum(n),
+         surprisal = -log2(prob)) %>%
+  ggplot(aes(prob, surprisal))+
+    geom_line()+
+    expand_limits(y = 0)+
+    labs(x = "Unigram Probability of Words in Frankenstein",
+         y = "Surprisal, in bits")
+```
+
+## Expected Surprisal, (a.k.a *Entropy*)
+
+So, we can calculate the probability of individual words in a book like *Frankenstein*, and from that probability, we can calculate each word's surprisal.
+
+The next thing to ask is what is the *expected surprisal* in a book like Frankenstein? As we're reading the book, very common words will happen very often, and less common words will happen less often. What is our *overall* experience of reading the book like, in terms of surprisal? Here's a table of some words that have a wide range of frequencies in the book.
+
+```{r}
+#| echo: true
+#| filename: "R"
+frank %>%
+  count(word) %>%
+  arrange(desc(n)) %>%
+  mutate(total = sum(n),
+         prob = n/sum(n),
+         surprisal = -log2(prob)) %>%
+  filter(word %in% c("the", "monster", "snow", "russia"))
+```
+
+We could try just taking the average of the `surprisal` column to get the "average surprisal", but that's not quite right in terms of capturing the expected surprisal. Yes, words like `snow` and `russia` have a large surprisals, so they should drag our estimate upwards, but they don't, by definition, happen all that often, so they shouldn't drag it up *too* much.
+
+What we do instead is multiply the surprisal value of each word by its probability, and sum it up! This will capture our experience of `the` having a small surprisal and happening often, and words like `snow` having a large surprisal, but happening less often.
+
+This "expected surprisal" is called *entropy*, and is often represented by $H(X)$
+
+$$
+\begin{array}{ll}
+\text{surprisal:} & {s(x_i)=-\log_2(p(x_i))}\\
+\text{entropy:} & H(X) = \sum_{i=1}^np(x_i)s(x_i)
+\end{array}
+$$
+
+```{r}
+#| echo: true
+#| filename: "R"
+frank %>%
+  count(word) %>%
+  arrange(desc(n)) %>%
+  mutate(prob = n/sum(n),
+         surprisal = -log2(prob)) %>%
+  summarise(entropy = sum(prob * surprisal))
+```
+
+So, on average, while reading *Frankenstein*, (and only paying attention to unigram distribution), we have an expected surprisal (a.k.a, entropy) of $\approx$ 9.3 bits.
+
+## From bits back to states (a.k.a. Perplexity)
+
+Now there are just over 7,000 unique word types in Frankenstein.[^2]
+
+[^2]: ...with the tokenizer I used anyway.
+
+```{r}
+#| echo: true
+#| filename: "R"
+frank %>%
+  count(word) %>%
+  nrow()
+```
+
+But because not every word is *equally* likely to show up, the expected surprisal, or entropy of the book is 9.3 bits. Just above, we saw that we can calculate the number of unique states we can encode with N bits with this formula:
+
+$$
+N~\text{bits} = 2^N~\text{states}
+$$
+
+If we do this with the entropy value we got in bits, that would be
+
+$$
+H(\text{Frankenstein}) \approx 9.3~\text{bits}
+$$
+
+$$
+9.3\text{bits} = 2^{9.3}~\text{states} \approx 630~\text{states}
+$$This is the estimated "perplexity" of the unigram model. Here's how to think about it. If we already know the probability of every word that appears in the book, and we use that probability distribution to guess each next word in the book, it's going to be as successful as trying to guess which next state is coming up out of 630 equally probable states.
+
+## Perplexity of ngram models
+
+In the first lecture on ngram models, we built a boring bigram model that looked like this.
+
+```{dot}
+//| fig-responsive: true
+//| file: figure/5sent.dot
+//| fig-caption: "A bigram model"
+```
+
+And, we worked out that we could estimate the probability a new sentence like this:
+
+```{=html}
+<style>
+    .bigrampath{
+    }
+    .bg1{
+      color: #440154; 
+    }
+    .bg2{
+      color: #3b528b; 
+    }
+    .bg3{
+      color: #21918c;
+    }
+    .bg4{
+      color: #5ec962;
+    }
+    .bg5{
+      color: #fde725;
+    }
+    .bigrampath tr:nth-child(7) td:nth-child(10){background : #440154; color: white;}
+    .bigrampath tr:nth-child(9) td:nth-child(8) {background : #3b528b; color: white;}
+    .bigrampath tr:nth-child(6) td:nth-child(9) {background : #21918c; color: white;}
+    .bigrampath tr:nth-child(8) td:nth-child(4) {background : #5ec962; }
+    .bigrampath tr:nth-child(3) td:nth-child(5) {background : #fde725; }
+</style>
+```
+[P(We \| \<START\>)]{.bg1} $\times$ [P(saw \| We)]{.bg2} $\times$ [P(the \| saw)]{.bg3} $\times$ [P(dog \| saw)]{.bg4} $\times$ [P(\<END\> \| dog)]{.bg5}
+
+::: bigrampath
+```{r}
+#| results: 'asis'
+tibble(sent = c("START I saw the dog END", 
+                "START We saw a dog END",
+                "START I read a book END",
+                "START I saw a book END",
+                "START I saw a dog END")) %>%
+  mutate(id = 1:n()) %>%
+  unnest_tokens(words, sent, to_lower = F) %>%
+  group_by(id) %>%
+  mutate(nextw = lead(words)) %>%
+  group_by(words) %>%
+  mutate(n_tot = n()) %>%
+  group_by(words, nextw) %>%
+  mutate(n = n()) %>%
+  summarise(p = max(n/n_tot)) %>%
+  ungroup() %>% 
+  drop_na() %>% 
+  complete(words, nextw) %>%
+  mutate(p = as.character(p)) %>%
+  replace_na(list(p = "<span style='color:grey'>0</span>")) %>%
+  pivot_wider(names_from = nextw, values_from = "p") %>%
+  knitr::kable()
+```
+:::
+
+$$
+P(X) = 0.2 \times 1 \times 1\times 0.25 \times 1 = 0.05
+$$
+
+
+With this probability, we can figure out how many total bits we need to encode this probability (a.k.a. the surprisal)
+
+$$
+s(X) = -\log_2(p(X)) = -\log_2(0.05) = 4.32
+$$
+
+Now, where evaluating ngram models diverge a bit from what we were doing before is we now figure out what the surprisial is *per word*, so we get bits per word (including the sentence ending tag).
+
+$$
+spw(X)=\frac{-\log_2(p(X))}{N} = \frac{-\log_2(0.05)}{5} =0.86 
+$$
+To get the *perplexity* of this sentence, given the bigram model, we follow the formula for getting the number of states given a number of bits.
+
+$$
+pp(X) = 2^{spw(X)} = 2^{0.86} = 1.82
+$$
+
+### Comparing models
+
+If model A assigns higher probabilities to the sentences in a test set than model B, then model A will have a smaller perplexity.
+
+Another way to think about the perplexity if ngram models, as Jurafsky & Martin point out, is that it's the "weighted average branching factor". Looking back at the bigram diagram above, it's like saying "Any time you are at a node, you are, on average, choosing between 1.82 possible branches to go down." 
+
