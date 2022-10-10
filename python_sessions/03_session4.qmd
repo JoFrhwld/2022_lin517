@@ -107,13 +107,15 @@ if frank_doc[506].pos_ == "VERB":
   print("it's a verb!")
 ```
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 1
+>
 > Print the `.text` of every word whose `.lemma_` is `"monster"`
 :::
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 2
+>
 > With a for loop, create a list called `five_letter` which contains every 5 letter word from the book (a.k.a. `.text` is 5 characters long.)
 :::
 
@@ -164,13 +166,15 @@ letters = [letter
 print(letters)
 ```
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 3
+>
 > With a *list comprehension*, create a list called `five_letter2` which contains every 5 letter word from the book (a.k.a. `.text` is 5 characters long.)
 :::
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 4
+>
 > By whatever means necessary (but I recommend using a list comprehension), create a list containing all of the words with a `VERB` as `.pos`
 :::
 
@@ -184,18 +188,21 @@ bman_set = set(bman_list)
 print(bman_set)
 ```
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 5
+>
 > Find out how many total words there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
 :::
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 6
+>
 > Find out how many total *unique* words (`.text`) there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
 :::
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 7
+>
 > Find out how many total *unique* lemmas (`.lemma_`) there are in *Frankenstein*, excluding tokens with `.pos` of `PUNCT` and `SPACE`
 :::
 
@@ -215,7 +222,8 @@ bman_count = Counter(bman_list)
 print(bman_count)
 ```
 
-:::{.callout-note}
+::: callout-note
 > ##### 💡 TASK 8
+>
 > Create a counter dictionary of all of the forms of "be" (`.lemma == "be"`) in *Frankenstein*
 :::

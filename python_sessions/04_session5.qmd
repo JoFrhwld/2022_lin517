@@ -9,17 +9,17 @@ categories:
 
 # Instructions
 
-The goal is, for a given book, find 
+The goal is, for a given book, find
 
-- The token *most likely* to follow "the". What is its conditional probability?
-- What is that token's *overall* probability in the book?
-- How much does knowing the preceding word is "the" boost that token's probability vs not know what the preceding word is?
+-   The token *most likely* to follow "the". What is its conditional probability?
+-   What is that token's *overall* probability in the book?
+-   How much does knowing the preceding word is "the" boost that token's probability vs not know what the preceding word is?
 
 ## How to download a book
 
 I've written the [`getbook.py`](assets/getbook.py) script for you to be able to quickly download a book from project gutenberg with the header and license info stripped out. You can use it like this, in the shell:
 
-```bash
+``` bash
 # bash
 python getbook.py 84 frankenstein.txt
 ```
@@ -27,9 +27,10 @@ python getbook.py 84 frankenstein.txt
 ## Some pythonic strategies
 
 ### Megastrings
+
 After reading in a book (and potentially `.strip()`ing off leading and trailing whitespace), you'll need to glue all of the lines together into one big megastring for tokenizing. You can do that like so:
 
-```{{python}}
+``` {{python}}
 megastring = " ".join(book_lines)
 ```
 
@@ -56,14 +57,13 @@ You can also get the most common value from the counting dictionary with `.most_
 print(letters_c.most_common(1))
 ```
 
-
 ## Some `nltk` strategies
 
 `nltk` has a few functions that will make this go easier.
 
-#### Side note 
+#### Side note
 
-You *might* need to run `nltk.download('punkt')` 
+You *might* need to run `nltk.download('punkt')`
 
 ### Sentence "tokenizing"
 
@@ -73,7 +73,6 @@ In a long paragraph or a "megastring", if we want bigram counts that are sensiti
 import pprint
 pp = pprint.PrettyPrinter(indent = 2)
 ```
-
 
 ```{python}
 # python
@@ -134,9 +133,7 @@ pp.pprint(sent_bg)
 
 Before you try counting anything, you're going to need to "flatten" this list of lists into just one flat list of all of the bigrams.
 
-```
-left as an exercise to the reader.
-```
+    left as an exercise to the reader.
 
 ## Conditional Probability
 
@@ -155,6 +152,3 @@ To get the probability of just "the", you'll actually have to get a separate cou
 ## Strategy
 
 Take a moment or two to list out each piece of code or information you're going to need to get to do this project, at a high level. It doesn't need to be complete, and you'll probably come back to this list and revise it. But having a list like this will help guide you to what the next step in the process is.
-
-
-
