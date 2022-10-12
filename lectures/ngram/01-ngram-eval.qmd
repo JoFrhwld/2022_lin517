@@ -59,7 +59,7 @@ $$
 Now, if our house had two rooms, (a living room and a kitchen), and each room had a switch, we can also workout how many different lighting configurations there are for the whole house.
 
 | lighting configurations      |  Living Room Switch   |    Kitchen Switch     |
-|----------------------------|:--------------------:|:--------------------:|
+|------------------------------|:---------------------:|:---------------------:|
 | living room on, kitchen on   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
 | living room on, kitchen off  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
 | living room off, kitchen on  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
@@ -78,7 +78,7 @@ $$
 Let's add 1 more room to the house (and then we'll stop) that also has a switch. Here's the table of house lighting configurations.
 
 | lighting configuration                    |  Living Room Switch   |    Kitchen Switch     |    Bedroom Switch     |
-|------------------|:----------------:|:----------------:|:----------------:|
+|-------------------------------------------|:---------------------:|:---------------------:|:---------------------:|
 | living room on, kitchen on, bedroom on    | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
 | living room on, kitchen on, bedroom off   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
 | living room on, kitchen off, bedroom on   | {{< fa toggle-on >}}  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
@@ -330,7 +330,6 @@ $$
 P(X) = 0.2 \times 1 \times 1\times 0.25 \times 1 = 0.05
 $$
 
-
 With this probability, we can figure out how many total bits we need to encode this probability (a.k.a. the surprisal)
 
 $$
@@ -341,8 +340,7 @@ Now, where evaluating ngram models diverge a bit from what we were doing before 
 
 $$
 spw(X)=\frac{-\log_2(p(X))}{N} = \frac{-\log_2(0.05)}{5} =0.86 
-$$
-To get the *perplexity* of this sentence, given the bigram model, we follow the formula for getting the number of states given a number of bits.
+$$ To get the *perplexity* of this sentence, given the bigram model, we follow the formula for getting the number of states given a number of bits.
 
 $$
 pp(X) = 2^{spw(X)} = 2^{0.86} = 1.82
@@ -352,5 +350,4 @@ $$
 
 If model A assigns higher probabilities to the sentences in a test set than model B, then model A will have a smaller perplexity.
 
-Another way to think about the perplexity if ngram models, as Jurafsky & Martin point out, is that it's the "weighted average branching factor". Looking back at the bigram diagram above, it's like saying "Any time you are at a node, you are, on average, choosing between 1.82 possible branches to go down." 
-
+Another way to think about the perplexity if ngram models, as Jurafsky & Martin point out, is that it's the "weighted average branching factor". Looking back at the bigram diagram above, it's like saying "Any time you are at a node, you are, on average, choosing between 1.82 possible branches to go down."
