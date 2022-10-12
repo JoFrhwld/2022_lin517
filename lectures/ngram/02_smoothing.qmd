@@ -1,0 +1,648 @@
+---
+title: "ngram - Smoothing"
+editor: visual
+author: Josef Fruehwald
+date: 2022-10-11
+description: "How we work around the problems of data sparsity"
+---
+
+## Perplexity Review
+
+The notes on [Perplexity](index.qmd), describe how we can get a measure of how well a given n-gram model predicts strings in a test set of data. Roughly speaking:
+
+-   The better the model gets, the higher a probability it will assign to each $P(w_i|w_{i-1})$ .
+
+-   The higher the probabilities, the lower the perplexities.
+
+-   The lower the perplexities, the better the model
+
+As a quick demonstration, I've written some code here in collapsible sections to build a bigram model of Frankenstein, and to get the conditional probabilities for every bigram in an input sentence.
+
+```{python}
+#| filename: "python"
+import nltk
+from collections import Counter
+import gutenbergpy.textget
+from tabulate import tabulate
+import numpy as np
+```
+
+```{python}
+#| filename: "python"
+#| code-fold: true
+#| code-summary: "`getbook()` function"
+def getbook(book, outfile):
+  """
+  Download a book from project Gutenberg and save it 
+  to the specified outfile
+  """
+  print(f"Downloading Project Gutenberg ID {book}")
+  raw_book = gutenbergpy.textget.get_text_by_id(book)
+  clean_book = gutenbergpy.textget.strip_headers(raw_book)
+  if not outfile:
+    outfile = f'{book}.txt'
+    print(f"Saving book as {outfile}")
+  with open(outfile, 'wb') as file:
+    file.write(clean_book)
+    file.close()
+
+```
+
+```{python}
+#| filename: "python"
+getbook(book = 84, outfile = "gen/frankenstein.txt")
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "From a file string to ngrams"
+#| filename: "python"
+def ngramize(filename, n = 2):
+  """
+    given a file name, generate the ngrams and n-1 grams
+  """
+  with open(filename, 'r') as f:
+    lines = f.read()
+    
+  sentences = nltk.sent_tokenize(lines)
+  sentences = [sent.strip().replace("\n", " ") 
+                      for sent in sentences]
+                      
+  sentences_tok = [nltk.word_tokenize(sent) 
+                      for sent in sentences]
+                      
+  sentences_padn = [list(nltk.lm.preprocessing.pad_both_ends(sent, n = n)) 
+                      for sent in sentences_tok]
+                      
+  sentences_ngram = [list(nltk.ngrams(sent, n = n)) 
+                      for sent in sentences_padn]
+  sentences_ngram_minus = [list(nltk.ngrams(sent, n = n-1)) 
+                      for sent in sentences_padn]                      
+  
+  flat_ngram = sum(sentences_ngram, [])
+  flat_ngram_minus = sum(sentences_ngram_minus, [])  
+                      
+  return(flat_ngram, flat_ngram_minus)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "Getting bigrams and unigrams from frankenstein"
+#| filename: "python"
+bigram, unigram = ngramize("gen/frankenstein.txt", n = 2)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "Getting counts of bigrams and unigrams"
+#| filename: "python"
+bigram_count = Counter(bigram)
+unigram_count = Counter(unigram)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "A function to get the conditional probability of a bigram"
+#| filename: "python"
+def get_conditional_prob(x, bigram_count, unigram_count):
+  """
+    for a tuple x, get the conditional probability of x[1] | x[0]
+  """
+  if x in bigram_count:
+    cond = bigram_count[x] / unigram_count[x[0:-1]]
+  else:
+    cond = 0
+    
+  return(cond)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "A function to get the conditional probability of every ngram in a sentence"
+#| filename: "python"
+def get_sentence_probs(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of conditional probabilities
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_conditionals = [get_conditional_prob(gram, bigram_count, unigram_count) 
+                        for gram in sent_ngram]
+  return(sent_conditionals)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "Given a sentence, get the conditional probability expression, for printing."
+#| filename: "python"
+def get_conditional_strings(sentence, n = 2):
+  """
+    given a sentence, return the string of conditionals
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens, n = n)
+  sent_pad = [x.replace("<", "&lt;").replace(">", "&gt;") for x in sent_pad]
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  out_cond = [f"P({x[-1]} | {' '.join(x[0:-1])})" for x in sent_ngram]
+  return(out_cond)
+```
+
+Having built the bigram model with the code above, we can take this sample sentence:
+
+> I saw the old man.
+
+We can calculate the conditional probability of every word in the sentence given the word before, as well as [the surprisal for each word](01-ngram-eval.qmd#from-probability-to-bits-a.k.a.-surprisal).[^1]
+
+[^1]: $-\log_2(p)$
+
+```{python}
+#| filename: "python"
+sentence = "I saw the old man."
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_strings(sentence, n = 2)
+```
+
+```{python}
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : cond_surp},
+  headers="keys",
+  numalign="right",
+  floatfmt=".4f")
+)
+```
+
+Summing up the surprisal column, we get the total surprisal of the sentence (about 21 bits). We can then get the number of bits per word (about 3) which gives us our ngram perplexity for the sentence (about 8).
+
+```{python}
+#| echo: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+print(
+  tabulate(
+    {
+      "total surprisal" : [sum(cond_surp)],
+      "surprisal/word"  : [sum(cond_surp)/len(cond_probs)],
+      "perplexity"      : [2 ** (sum(cond_surp)/len(cond_probs))]
+  },
+  headers="keys",
+  numalign="right",
+  floatfmt=".4f"
+  )
+)
+```
+
+### A familiar problem approaches
+
+But, not everything is so neat and tidy. Let's try this again for the sentence
+
+> I saw the same man.
+
+```{python}
+#| filename: "python"
+#| warning: false
+sentence = "I saw the same man."
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_strings(sentence, n = 2)
+```
+
+```{python}
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : ["{{< fa infinity >}}" if x == np.inf else f"{x:.4f}" for x in cond_surp]},
+  headers="keys",
+  colalign=("left", "right", "right"),
+  floatfmt=".4f")
+)
+```
+
+```{python}
+#| echo: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+print(
+  tabulate(
+    {
+      "total surprisal" : ['{{< fa infinity >}} '],
+      "surprisal/word"  : ['{{< fa infinity >}} '],
+      "perplexity"      : ['{{< fa infinity >}}!']
+  },
+  headers="keys",
+  numalign="left"
+  )
+)
+```
+
+It looks like the bigram `("same", "man")` just didn't appear in the novel. This is zero percolates up through all of our calculations.
+
+$$
+C(\text{same man}) = 0
+$$
+
+$$
+P(\text{same man}) = \frac{C(\text{same man)}}{N} = \frac{0}{N} = 0
+$$
+
+$$
+P(\text{man}~|~\text{same}) = \frac{P(\text{same man)}}{P(\text{same)}} = \frac{0}{P(\text{same})} = 0
+$$
+
+$$
+s(\text{man}~|~\text{same}) = -\log_2(P(\text{man}~|~\text{same})) = -\log_2(0) = \infty
+$$
+
+$$
+pp(\text{I saw the same man.)} = \frac{\sum_{i=1}^Ns(w_i|w_{i-1})}{N} = \frac{\dots+\infty+\dots}{N} = \infty
+$$
+
+In other words, our bigram model's "mind" is **completely** blown by a sentence with the sequence `same man` in it.
+
+::: {#fig-mindblow}
+[<iframe src="https://giphy.com/embed/lXu72d4iKwqek" width="100%" height="100%" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>]{fig-align="center"}
+
+Our our ngram model, upon seeing `same man`
+:::
+
+This is, of course [data sparsity](../data_sparsity/data_sparsity.qmd) rearing its head again. On the one hand, we *are* building an n-gram model out of a fairly small corpus. But on the other, the data sparsity problem will never go away, and we are always going to be left with the following two issues:
+
+-   Out Of Vocabulary items
+
+-   Missing ngrams of words that *were* in the vocabulary.
+
+## OOV - Out of Vocabulary
+
+"Out Of Vocabulary", commonly referred to OOV, problems, are going to come up if you ever do any computational work with language of any variety.
+
+::: callout-note
+## OOV Example
+
+A lot of phoneticians today use "forced alignment", which tries to time align words and phones to audio. Step one of the process is taking a transcription, tokenizing it, then looking up each token in a pre-specified pronunciation dictionary. A commonly used pronunciation dictionary is the CMU pronunciation dictionary. Here's what a few entries of it around `Frankenstein` look like
+
+    ...
+    FRANKENFOOD  F R AE1 NG K AH0 N F UW2 D
+    FRANKENHEIMER  F R AE1 NG K AH0 N HH AY2 M ER0
+    FRANKENSTEIN  F R AE1 NG K AH0 N S T AY2 N
+    FRANKENSTEIN(1)  F R AE1 NG K AH0 N S T IY2 N
+    FRANKENSTEIN'S  F R AE1 NG K AH0 N S T AY2 N Z
+    FRANKENSTEIN'S(1)  F R AE1 NG K AH0 N S T IY2 N Z
+    FRANKFORT  F R AE1 NG K F ER0 T
+    FRANKFORT'S  F R AE1 NG K F ER0 T S
+    FRANKFURT  F R AE1 NG K F ER0 T
+    ...
+
+Let's say I tokenized this sentence and looked up each word
+
+> I ate the po'boy.
+
+We'd wind up with this:
+
+    I  AY1
+    ATE  EY1 T
+    THE  DH AH0
+    <UNK>  <UNK>
+
+We're getting `<UNK>` for "po'boy" because it's not in the CMU dictionary. It's an Out Of Vocabulary, or OOV word.
+:::
+
+Our example of perplexity blowing up was due to a specific bigram, `('same', 'man')` not appearing in the corpus, even though each individual word does appear. The same thing will happen if any individual word in a sentence is oov.
+
+```{python}
+#| filename: python
+#| error: false
+#| message: false
+#| output: false
+# literally blowing the mind of a victorian child eating a cool ranch dorito
+sentence = "I ate a cool ranch Dorito."
+cond_probs = get_sentence_probs(sentence, bigram_count, unigram_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_strings(sentence, n = 2)
+```
+
+```{python}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : ["{{< fa infinity >}}" if x == np.inf else f"{x:.4f}" for x in cond_surp]},
+  headers="keys",
+  colalign=("left", "right", "right"),
+  floatfmt=".4f"  
+  )
+)
+```
+
+### Solutions?
+
+One approach SLP suggests is to convert every vocabulary item that occurs below a certain frequency to `<UNK>`, then re-estimate all of the ngram values. Here, I'm
+
+```{python}
+# Getting a list of unigrams that occurred once
+to_unk = [x for x in unigram_count if unigram_count[x] == 1]
+
+# <UNK> conversion
+unigram_unk = [("<UNK>",) if x in to_unk else x for x in unigram]
+bigram_unk = [("<UNK>", "<UNK>") if ((x[0],) in to_unk and (x[1],) in to_unk) else
+              ("<UNK>", x[1]) if (x[0],) in to_unk else
+              (x[0], "<UNK>") if (x[1],) in to_unk else
+              x for x in bigram ]
+
+# <UNK> count              
+unigram_unk_count = Counter(unigram_unk)
+bigram_unk_count = Counter(bigram_unk)
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "A function to get the conditional probability of every ngram in a sentence"
+#| filename: "python"
+def get_sentence_unk_probs(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of conditional probabilities
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_conditionals = [get_conditional_prob(gram, bigram_count, unigram_count) 
+                        for gram in sent_ngram]
+  return(sent_conditionals)
+```
+
+```{python}
+#| echo: false
+def get_conditional_unk_strings(sentence, unigram_count, n = 2):
+  """
+    given a sentence, return the string of conditionals
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_pad = [x.replace("<", "&lt;").replace(">", "&gt;") for x in sent_pad]
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  out_cond = [f"P({x[-1]} | {' '.join(x[0:-1])})" for x in sent_ngram]
+  return(out_cond)
+```
+
+```{python}
+sentence = "I ate a Dorito."
+cond_probs = get_sentence_unk_probs(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_unk_strings(sentence, unigram_count, n = 2)
+```
+
+```{python}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : ["{{< fa infinity >}}" if x == np.inf else x for x in cond_surp]},
+  headers="keys",
+  colalign=("left", "right", "right"),
+  floatfmt=".4f"
+  )
+)
+```
+
+Converting low frequency words to `<UNK>` means that now when the ngram model meets a word it doesn't know, like `Dorito`, there is still some probability it can assign.
+
+## Real Zeros
+
+This `<UNK>`ification of the data doesn't solve everything, though. Here's the longer sentence:
+
+```{python}
+#| error: false
+#| message: false
+#| output: false
+sentence = "I ate a cool ranch Dorito."
+cond_probs = get_sentence_unk_probs(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
+```
+
+```{python}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : ["{{< fa infinity >}}" if x == np.inf else f"{x:.4f}" 
+                          for x in cond_surp]
+        },
+  floatfmt=".4f",
+  headers="keys",
+  colalign=("left", "digit", "right")
+  )
+)
+```
+
+The problem here is that there *is* a known word, `cool`, that just happens never to occur in the bigrams `(a, cool)` or `(cool, <UNK>)`. Maybe what we want is some way of assigning a small probability, of bigrams that could have happened, but didn't.
+
+### Add 1 smoothing (Laplace Smoothing)
+
+The first, simple idea, is to make a grid of all possible bigrams, and add 1 to all of their counts.
+
+```{python}
+#| code-fold: true
+#| code-summary: "A function to get the add 1 smoothed conditional probability of a bigram"
+#| filename: "python"
+def get_conditional_prob_add1(x, bigram_count, unigram_count):
+  """
+    for a tuple x, get the conditional probability of x[1] | x[0]
+  """
+  if x in bigram_count:
+    cond = (bigram_count[x]+1) / (unigram_count[x[0:-1]] + len(unigram_count))
+  else:
+    cond = 1/ (unigram_count[x[0:-1]] + len(unigram_count))
+    
+  return(cond)
+
+```
+
+```{python}
+#| code-fold: true
+#| code-summary: "A function to get the conditional probability of every ngram in a sentence"
+#| filename: "python"
+def get_sentence_unk_probs_add1(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of conditional probabilities
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_conditionals = [get_conditional_prob_add1(gram, bigram_count, unigram_count) 
+                        for gram in sent_ngram]
+  return(sent_conditionals)
+```
+
+```{python}
+#| error: false
+#| message: false
+#| output: false
+sentence = "I ate a cool ranch Dorito." 
+cond_probs = get_sentence_unk_probs_add1(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+cond_surp = [-np.log2(x) for x in cond_probs]
+cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
+```
+
+```{python}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "probability" : cond_probs,
+        "surprisal"   : ["{{< fa infinity >}}" if x == np.inf else x for x in cond_surp]},
+  floatfmt=".4f",
+  headers="keys",
+  numalign="right")
+)
+```
+
+2 things to notice here:
+
+1.  There are no more zeros!
+2.  The probabilities are all different!
+
+The probabilities jumped around because by adding 1 to every bigram count, we've given many bigrams a larger portion of the probability pie than they had before, and in a probability space, everything has to sum to 1. So that means we've also *taken away* a portion of the probability space from many bigrams.\
+
+```{python}
+#| echo: false
+#| code-fold: true
+#| code-summary: "A function to get the conditional probability of every ngram in a sentence"
+#| filename: "python"
+def get_sentence_unk_count(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of conditional probabilities
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_counts = [bigram_count[gram] 
+                        for gram in sent_ngram]
+  return(sent_counts)
+```
+
+```{python}
+#| echo: false
+#| code-summary: "A function to get the add 1 smoothed conditional probability of a bigram"
+#| filename: "python"
+def get_cstar(x, bigram_count, unigram_count):
+  """
+    for a tuple x, get the cstar
+  """
+  if x in bigram_count:
+    cond = (bigram_count[x]+1) / (unigram_count[x[0:-1]] + len(unigram_count))
+  else:
+    cond = 1/ (unigram_count[x[0:-1]] + len(unigram_count))
+  
+  cstar = unigram_count[x[0:-1]] * cond
+    
+  return(cstar)
+
+def get_sentence_cstar(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of c starts
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_cstar = [get_cstar(gram, bigram_count, unigram_count) 
+                        for gram in sent_ngram]
+  return(sent_cstar)
+
+
+def get_w1(sentence, bigram_count, unigram_count, n = 2):
+  """
+    given a sentence, get its list of c starts
+  """
+  sent_tokens = nltk.word_tokenize(sentence)
+  sent_tokens_unk = [x if (x,) in unigram_count else "<UNK>" for x in sent_tokens]
+  sent_pad = nltk.lm.preprocessing.pad_both_ends(sent_tokens_unk, n = n)
+  sent_ngram = nltk.ngrams(sent_pad, n = n)
+  sent_w1 = [unigram_count[gram[0:-1]] for gram in sent_ngram]
+  return(sent_w1)
+
+
+```
+
+```{python}
+#| echo: false
+orig_count = get_sentence_unk_count(sentence, bigram_unk_count, unigram_unk_count)
+cond_probs = get_sentence_unk_probs_add1(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+w1_count = get_w1(sentence, bigram_unk_count, unigram_unk_count, n = 2)
+cstar_count =  get_sentence_cstar(sentence, bigram_unk_count, unigram_unk_count, n= 2)
+cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
+```
+
+```{python}
+#| echo: false
+#| warning: false
+#| error: false
+#| output: asis
+#| tbl-cap: "Summary Statistics for the sentence"
+#| echo: false
+#| output: asis
+print(
+  tabulate(
+      {"conditional"  : cond_strings,
+        "bigram count" : orig_count,
+        "w1 count": w1_count,
+        "add 1 prob" : cond_probs,
+        "implied counts" : cstar_count 
+      },
+  headers="keys",
+  numalign="right",
+  floatfmt=(",.4f"),
+  intfmt=(","))
+)
+
+```
+
+### Absolute Discounting
+
+The add 1 method effectively shaved off a little bit of probability from bigrams we *did* see to give it to bigrams we *didn't* see. For example, we had 2 observations of `(I, ate)`, but after redistributing probabilities, we'd effectively shaved off 0.79 observations. Things are even more extreme for other bigrams. Like `(<s>, I)` which got 323 observations shaved off, to redistribute to unseen bigrams.
+
+The idea behind Absolute Discounting is instead of shaving variable amounts of probability off of every ngram, we instead shave off a *fixed* amount. The Greek letter $\delta$ is used to indicate this "shave off" amount.
+
+Our total number of observed bigrams, after `<UNK>`ifying, 36,744. If we shaved off 0.25 observations off of each bigram, that would give us $36,744\times0.75=27,558$ observations to spread around to the bigrams we *didn't* observe. If we just did that uniformly, the unobserved bigrams would just get a sliver of that probability mass. There are 4,179 unigrams in our data, meaning we would *expect* there to be $4179^2=17,464,041$ possible bigrams, that means there are $17,464,041-36,744 = 17,427,297$ bigrams trying to get a piece of those 8,936 observations we just shaved off, coming out to just 0.0016 observations each.
+
+Some more clever approaches try not to distribute the probability surplus evenly, though. For example Kneser-Ney smoothing tries to distribute it proportionally to how often the $w_i$ word in a $(w_{i-1}w_i)$ bigram appears as the second word in a bigram.
