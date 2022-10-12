@@ -1564,10 +1564,10 @@
     },
     "tidytext": {
       "Package": "tidytext",
-      "Version": "0.3.3",
+      "Version": "0.3.4",
       "Source": "Repository",
       "Repository": "CRAN",
-      "Hash": "2bb4abb56a0287c2f3572434517ba2e9",
+      "Hash": "baf783b244a36fe5d11069b53f32a136",
       "Requirements": [
         "Matrix",
         "dplyr",
