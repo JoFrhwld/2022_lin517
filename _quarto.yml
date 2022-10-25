@@ -33,6 +33,10 @@ website:
               - href: "lectures/ngram/index.qmd"
               - href: "lectures/ngram/01-ngram-eval.qmd"
               - href: "lectures/ngram/02_smoothing.qmd"
+          - section: "Word Vectors"
+            href: "lectures/word_vectors/index.qmd"
+            contents:
+              - href: "lectures/word_vectors/01_concept.qmd"
           - section: "Models"
             contents:
               - href: "lectures/evaluation/index.qmd"
