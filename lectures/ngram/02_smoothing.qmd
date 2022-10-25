@@ -4,6 +4,8 @@ editor: visual
 author: Josef Fruehwald
 date: 2022-10-11
 description: "How we work around the problems of data sparsity"
+categories:
+  - "ngram"
 ---
 
 ## Perplexity Review
@@ -335,8 +337,6 @@ cond_strings = get_conditional_strings(sentence, n = 2)
 #| error: false
 #| output: asis
 #| tbl-cap: "Summary Statistics for the sentence"
-#| echo: false
-#| output: asis
 print(
   tabulate(
       {"conditional"  : cond_strings,
@@ -414,8 +414,6 @@ cond_strings = get_conditional_unk_strings(sentence, unigram_count, n = 2)
 #| error: false
 #| output: asis
 #| tbl-cap: "Summary Statistics for the sentence"
-#| echo: false
-#| output: asis
 print(
   tabulate(
       {"conditional"  : cond_strings,
@@ -450,8 +448,6 @@ cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
 #| error: false
 #| output: asis
 #| tbl-cap: "Summary Statistics for the sentence"
-#| echo: false
-#| output: asis
 print(
   tabulate(
       {"conditional"  : cond_strings,
@@ -522,8 +518,6 @@ cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
 #| error: false
 #| output: asis
 #| tbl-cap: "Summary Statistics for the sentence"
-#| echo: false
-#| output: asis
 print(
   tabulate(
       {"conditional"  : cond_strings,
@@ -619,8 +613,6 @@ cond_strings = get_conditional_unk_strings(sentence, unigram_unk_count, n = 2)
 #| error: false
 #| output: asis
 #| tbl-cap: "Summary Statistics for the sentence"
-#| echo: false
-#| output: asis
 print(
   tabulate(
       {"conditional"  : cond_strings,

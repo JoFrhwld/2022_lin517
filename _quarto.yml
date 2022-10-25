@@ -4,7 +4,7 @@ project:
 website:
   title: "Lin517: Natural Language Processing"
   sidebar:
-    collapse-level: 1
+    collapse-level: 3
     contents:
       - section: "Resources"
         contents:
@@ -14,18 +14,28 @@ website:
             text: "Mathematical notation"
       - section: "Lecture Notes"
         contents: 
-          - href: "lectures/what_is_nlp/index.qmd"
-            text: "What is NLP?"
-          - href: "lectures/data_sparsity/data_sparsity.qmd"
-            text: "Data Sparsity"
-          - href: "lectures/data_processing/index.qmd"
-            text: "Data processing"
-          - href: "lectures/data_processing/addendum.qmd"
-            text: "Data processing -- addendum"
-          - href: "lectures/lem_stem/index.qmd"
-            text: "Lemmatizing and stemming"
-          - href: "lectures/ngram/index.qmd"
-          - href: "lectures/evaluation/index.qmd"
+          - section: "Intro"
+            contents:
+              - href: "lectures/what_is_nlp/index.qmd"
+                text: "What is NLP?"
+          - section: "Data Sparsity and Processing"
+            contents:
+              - href: "lectures/data_sparsity/data_sparsity.qmd"
+                text: "Data Sparsity"
+              - href: "lectures/data_processing/index.qmd"
+                text: "Data processing"
+              - href: "lectures/data_processing/addendum.qmd"
+                text: "Data processing -- addendum"
+              - href: "lectures/lem_stem/index.qmd"
+                text: "Lemmatizing and stemming"
+          - section: "ngrams"
+            contents:
+              - href: "lectures/ngram/index.qmd"
+              - href: "lectures/ngram/01-ngram-eval.qmd"
+              - href: "lectures/ngram/02_smoothing.qmd"
+          - section: "Models"
+            contents:
+              - href: "lectures/evaluation/index.qmd"
       - section: "python sessions"
         contents:
           - href: "python_sessions/00_session1.qmd"
@@ -44,10 +54,13 @@ format:
     include-in-header: googlefont.html
     mainfont: "'Atkinson Hyperlegible', sans-serif"
     smooth-scroll: true
+knitr: 
+  opts_chunk: 
+    message: false
 
 editor: visual
 
-output-format: all
+output-format: html
 
 execute:
   freeze: auto

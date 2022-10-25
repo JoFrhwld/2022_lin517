@@ -17,6 +17,8 @@ license: CC-BY-SA 4.0
 image: "data_sparsity_files/figure-html/unnamed-chunk-2-1.png"
 bibliography: references.bib
 reference-location: margin
+categories:
+  - "data"
 ---
 
 ## Bug Catching

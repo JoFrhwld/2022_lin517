@@ -7,7 +7,10 @@ author:
 knitr: 
   opts_chunk: 
     echo: true
+    message: false
 date: "2022-9-13"
+categories:
+  - "data"
 ---
 
 ```{r}

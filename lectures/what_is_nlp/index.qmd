@@ -12,13 +12,14 @@ knitr:
   opts_chunk: 
     echo: false
     warning: false
-    message: false
 bibliography: references.bib
+categories:
+  - "intro"
 ---
 
 ```{r}
 library(reticulate)
-use_condaenv("transformers")
+source("renv/activate.R")
 ```
 
 ```{r}

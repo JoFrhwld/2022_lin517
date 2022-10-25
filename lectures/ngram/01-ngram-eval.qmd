@@ -8,13 +8,15 @@ author:
 knitr: 
   opts_chunk: 
     echo: false
-    message: false
 format: 
   html: 
     smooth-scroll: true
 bibliography: references.bib
 freeze: auto
 description: "Ok, here comes some math"
+categories:
+  - "ngram"
+  - "models"
 ---
 
 ```{r}
@@ -59,7 +61,7 @@ $$
 Now, if our house had two rooms, (a living room and a kitchen), and each room had a switch, we can also workout how many different lighting configurations there are for the whole house.
 
 | lighting configurations      |  Living Room Switch   |    Kitchen Switch     |
-|------------------------------|:---------------------:|:---------------------:|
+|----------------------------|:--------------------:|:--------------------:|
 | living room on, kitchen on   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
 | living room on, kitchen off  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
 | living room off, kitchen on  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |
@@ -78,7 +80,7 @@ $$
 Let's add 1 more room to the house (and then we'll stop) that also has a switch. Here's the table of house lighting configurations.
 
 | lighting configuration                    |  Living Room Switch   |    Kitchen Switch     |    Bedroom Switch     |
-|-------------------------------------------|:---------------------:|:---------------------:|:---------------------:|
+|-------------------------|:--------------:|:--------------:|:--------------:|
 | living room on, kitchen on, bedroom on    | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  |
 | living room on, kitchen on, bedroom off   | {{< fa toggle-on >}}  | {{< fa toggle-on >}}  | {{< fa toggle-off >}} |
 | living room on, kitchen off, bedroom on   | {{< fa toggle-on >}}  | {{< fa toggle-off >}} | {{< fa toggle-on >}}  |

@@ -15,6 +15,8 @@ format:
 bibliography: references.bib
 freeze: auto
 description: "ngram langauge model notes. The structure of these notes broadly follows SLP V3. "
+categories:
+  - "ngram"
 ---
 
 ```{r}

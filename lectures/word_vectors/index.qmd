@@ -1,0 +1,22 @@
+---
+title: "Word Vectors"
+editor: visual
+categories:
+  - "word vectors"
+listing:
+  contents:
+    - "*qmd"
+  type: table
+  sort: "date"
+  date-format: "YYYY-MM-DD"
+  categories: true
+  fields: [date, file-modified, title, categories]
+---
+
+There's a few different components we can start understanding about "word vectors."
+
+-   The concept of representing words with numeric "vectors"
+
+-   A little bit of linear algebra
+
+-   A little (really just a sprinkling) of geometry & trig

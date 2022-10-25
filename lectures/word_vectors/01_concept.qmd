@@ -1,0 +1,718 @@
+---
+title: "Word Vectors - Concepts"
+author: Josef Fruehwald
+date: 2022-10-26
+editor: visual
+knitr: 
+  opts_chunk: 
+    echo: false
+    message: false
+categories:
+  - "word vectors"
+---
+
+```{r}
+library(tidyverse)
+library(ggforce)
+library(ggrepel)
+library(khroma)
+library(showtext)
+
+font_add_google("Atkinson Hyperlegible", "atkinson")
+showtext_auto()
+
+theme_set(theme_minimal() + theme(text = element_text(family = "atkinson", size = 16)))
+library(reticulate)
+
+```
+
+## Features
+
+### Categorical Features
+
+In linguistics, you've probably already encountered our tendency to categorize *things* using a bunch of features. For example, in Phonology we often categorize phonemes according to "distinctive features."
+
+|     | voice | continuant | LAB | COR | DORS | anterior |
+|-----|:-----:|:----------:|:---:|:---:|:----:|:--------:|
+| p   |  ➖   |     ➖     | ➕  | ➖  |  ➖  |    ➖    |
+| t   |  ➖   |     ➖     | ➖  | ➕  |  ➖  |    ➖    |
+| k   |  ➖   |     ➖     | ➖  | ➖  |  ➕  |    ➖    |
+| b   |  ➕   |     ➖     | ➕  | ➖  |  ➖  |    ➖    |
+| d   |  ➕   |     ➖     | ➖  | ➕  |  ➖  |    ➖    |
+| g   |  ➕   |     ➖     | ➖  | ➖  |  ➕  |    ➖    |
+| f   |  ➖   |     ➕     | ➕  | ➖  |  ➖  |    ➖    |
+| s   |  ➖   |     ➕     | ➖  | ➕  |  ➖  |    ➖    |
+| ʃ   |  ➖   |     ➕     | ➖  | ➕  |  ➖  |    ➕    |
+
+More relevant to the topic of word vectors, we could do the same with semantic features and words
+
+|      | domesticated | feline |
+|------|:------------:|:------:|
+| cat  |      ➕      |   ➕   |
+| puma |      ➖      |   ➕   |
+| dog  |      ➕      |   ➖   |
+| wolf |      ➖      |   ➖   |
+
+### Numeric Features
+
+Instead of using categorical values for these features, let's use a numeric score. These represent my own subjective scores for these animals.
+
+|      | domesticated | feline |
+|------|-------------:|-------:|
+| cat  |           70 |    100 |
+| puma |            0 |     90 |
+| dog  |           90 |     30 |
+| wolf |           10 |     10 |
+
+The sequence of numbers associated with "cat", \[70, 100\], we'll call a "vector". A lot of the work we're going to do with vectors can be understood if we start with two dimensional vectors like this. We can plot each animal as a point in the \[domesticated, feline\] "vector space".
+
+```{r}
+tibble(animal = c("cat", "puma", "dog", "wolf"),
+       domesticated = c(70, 0, 90, 10),
+       feline = c(100, 90, 30, 10)) -> animal_vec
+```
+
+```{r}
+#| label: fig-vecpoints
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "four animals plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  ggplot(aes(domesticated, feline, color = animal))+
+    geom_point()+
+    geom_label_repel(aes(label = animal))+
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_brewer(palette = "Dark2", guide = "none")+
+    coord_fixed()
+```
+
+## Vectors
+
+The word "vector" might conjure up ideas of "direction" for you, as it should! The way we really want to think about vectors when we're doing word vectors is like a line with an arrow at the end, pointing at the location in "vector space" where each animal is.
+
+```{r}
+#| label: fig-vecarrow
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "four animals plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  ggplot(aes(domesticated, feline, color = animal))+
+    geom_point()+
+    geom_segment(aes(xend = domesticated, yend = feline), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+    geom_label_repel(aes(label = animal), alpha = 0.8)+  
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_brewer(palette = "Dark2", guide = "none")+
+    coord_fixed()
+```
+
+### The "magnitude" of a vector.
+
+We're going to have to calculate the magnitudes of vectors, so let's start with calculating the magnitude of the "dog" vector.
+
+```{r}
+#| label: fig-dogvec1
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "dog plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  filter(animal == "dog") %>%
+  ggplot(aes(domesticated, feline, color = animal))+
+    geom_point()+
+    geom_segment(aes(xend = domesticated, yend = feline), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+    geom_label_repel(aes(label = animal), alpha = 0.8)+  
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_manual(values = c("#d95f02"), guide = "none")+
+    coord_fixed()
+```
+
+The magnitude of "dog" in this vector space is the length of the line that reaches from the \[0,0\] point to the location of "dog". The mathematical notation we'd use to indicate "the length of the dog vector" is $|\text{dog}|$. We can work out the distance of the vector by thinking about it like a right triangle.
+
+```{r}
+#| label: fig-dogvec2
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "dog plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  filter(animal == "dog") %>%
+  ggplot(aes(domesticated, feline, color = animal))+
+    geom_point()+
+    geom_segment(aes(xend = domesticated, yend = feline), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+  geom_segment(x = 0, y = 0, 
+                 xend = 90, yend =0, 
+                 color = "black", arrow = arrow(length = unit(0.2, "cm")))+  
+    geom_segment(x = 90, y = 0, 
+                 xend = 90, yend =30, 
+                 color = "black", arrow = arrow(length = unit(0.2, "cm")))+
+    geom_label_repel(aes(label = animal), alpha = 0.8)+  
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_manual(values = c("#d95f02"), guide = "none")+
+    coord_fixed()
+```
+
+Looking at the dog vector this way, we can use the Pythagorean Theorem to get its length
+
+$$
+|\text{dog}|^2 = \text{domesticated}^2 + \text{feline}^2
+$$
+
+$$
+|\text{dog}| = \sqrt{\text{domesticated}^2 + \text{feline}^2}
+$$
+
+I won't go through the actual numbers here, but it turns out the magnitude of dog is `r sqrt((90^2)+(30^2)) %>% round(digits = 2)`.
+
+```{python}
+#| echo: true
+import numpy as np
+
+dog = np.array([90, 30])
+dog_mag1 = np.sqrt(sum([x**2 for x in dog]))
+
+#or
+
+dog_mag2 = np.linalg.norm(dog)
+
+print(f"{dog_mag1:.2f} or {dog_mag2:.2f}")
+```
+
+#### In General
+
+The way things worked out for dog is how we'd calculate the magnitude of any vector of any dimensionality. You square each value, sum them up, then take the square root of that sum.
+
+$$
+|v|^2 = v_1^2 + v_2^2 + v_3^2  + \dots +v_i^2
+$$
+
+$$
+|v|^2 = \sum_{i = 1}^nv_i^2
+$$
+
+$$
+|v| = \sqrt{\sum_{i = 1}^nv_i^2}
+$$
+
+### Comparing Vectors
+
+Now, let's compare the vectors for "cat" and "dog" in this "vector space"
+
+```{r}
+#| label: fig-catdog1
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "dog and cat plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  filter(animal %in% c("dog", "cat")) %>%
+  ggplot(aes(domesticated, feline, color = animal))+
+    geom_point()+
+    geom_segment(aes(xend = domesticated, yend = feline), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+    geom_label_repel(aes(label = animal), alpha = 0.8)+  
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_brewer(palette = "Dark2", guide = "none")+
+    coord_fixed()
+```
+
+How should we compare the closeness of these two vectors in the vector space? What's most common is to estimate the angle between the two, usually notated with $\theta$, or more specifially, to get the cosine of the angle, $\cos\theta$.
+
+```{r}
+start <- c(x = 0, y = 0)
+
+dat <- data.frame(
+  x = start[c("x", "x")],
+  y = start[c("y", "y")],
+  xend = c(70, 90),
+  yend = c(100, 30)
+)
+
+angles <- with(animal_vec %>% filter(animal %in% c("cat", "dog")), atan2(domesticated - 0, feline - 0))
+```
+
+```{r}
+#| label: fig-catdog2
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "dog and cat plotted in the domesticated/feline space"
+
+set.seed(517)
+animal_vec %>%
+  mutate(x = 0, y = 0) %>%
+  filter(animal %in% c("dog", "cat")) %>%
+  ggplot()+
+    geom_point(aes(domesticated, feline, color = animal))+
+    geom_segment(aes(xend = domesticated, yend = feline, color = animal), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+    geom_arc(aes(x0 = start["x"], y0 = start["y"], r = 20, 
+               start = angles[1], end = angles[2])) +
+    geom_label_repel(aes(x = domesticated,
+                         y = feline, label = animal, color = animal), alpha = 0.8)+ 
+    annotate(x = 20, y = 15, geom = "text", parse = T, label = "theta")+
+    xlim(0, 100)+
+    ylim(0, 100)+
+    scale_color_brewer(palette = "Dark2", guide = "none")+
+    coord_fixed()
+```
+
+Where did cosine come in?? This is a bit of a throwback to trigonometry, again being related to formulas for estimating angles of triangles.
+
+The specific formula to get $\cos\theta$ for dog and cat involves a "dot product", which for dog and cat in particular goes like this $$
+\text{dog}\cdot \text{cat} = (\text{dog}_{\text{domesticated}}\times\text{cat}_{\text{domesticated}}) +  (\text{dog}_{\text{feline}}\times\text{cat}_{\text{feline}})
+$$
+
+```{python}
+#| echo: true
+dog = np.array([90, 30])
+cat = np.array([70, 100])
+
+dot1 = sum([x * y for x,y in zip(dog, cat)])
+
+# or!
+
+dot2 = np.dot(dog, cat)
+
+print(f"{dot1} or {dot2}")
+```
+
+In general, the dot product of any two vectors will be
+
+$$
+a\cdot b = a_1b_1 + a_2b_2 + a_3b_3 +\dots a_ib_i
+$$
+
+$$
+a\cdot b= \sum_{i=1}^n a_ib_i
+$$
+
+One way to think of the dot product here is if two vectors have very similar values along many dimensions, their dot product will be large. On the other hand, if they're very different, and one had a lot of zeros where the other has large values, the dot product will be small.
+
+The full formula for $\cos\theta$ normalizes the dot product by dividing it by the product the magnitude of dog and cat.
+
+$$
+\cos\theta = \frac{\text{dog}\cdot\text{cat}}{|\text{dog}||\text{cat}|}
+$$
+
+The reason why we're dividing like this is because if the two vectors had the *same* direction, their dot product would equal multiplying their magnitudes.
+
+```{r}
+#| label: fig-sametheta
+#| fig-width: 5
+#| fig-height: 5
+#| fig-cap: "two vectors with the same $\\theta$"
+set.seed(517)
+tibble(animal = c("big dog", "small dog"),
+       domesticated = c(90, 90/3),
+       feline = c(30, 30/3)) %>%
+  ggplot()+
+    geom_point(aes(domesticated, feline, color = animal))+
+    geom_segment(aes(xend = domesticated, yend = feline, color = animal), 
+                 x = 0, y = 0, arrow = arrow(type = "closed"))+
+    geom_label_repel(aes(x = domesticated,
+                         y = feline, label = animal, color = animal), alpha = 0.8)+
+    scale_color_bright(guide = "none")+
+    xlim(0, 100)+
+    ylim(0, 100)+
+    coord_fixed()
+```
+
+```{python}
+#| echo: true
+big_dog = np.array([90, 30])
+small_dog = np.array([30, 10])
+
+big_dog_mag = np.linalg.norm(big_dog)
+small_dog_mag = np.linalg.norm(small_dog)
+print(f"Product of magnitudes is {(big_dog_mag * small_dog_mag):.0f}")
+
+big_small_dot = np.dot(big_dog, small_dog)
+print(f"Dot produtct of vectors is {big_small_dot}")
+```
+
+Normalizing like this means that $\cos\theta$ is always going to be some number between -1 and 1, and for the vectors we're going to be looking at, usually between 0 and 1.
+
+For the actual case of dog and cat
+
+```{python}
+#| echo: true
+dog = np.array([90, 30])
+cat = np.array([70, 100])
+
+dog_dot_cat = np.dot(dog, cat)
+dog_mag = np.linalg.norm(dog)
+cat_mag = np.linalg.norm(cat)
+
+cat_dog_cos = dog_dot_cat / (dog_mag * cat_mag)
+
+print(f"The cosine similarity of dog and cat is {cat_dog_cos:.3f}")
+```
+
+or
+
+```{python}
+#| echo: true
+from scipy import spatial
+cat_dog_cos2 = 1 - spatial.distance.cosine(dog, cat)
+print(f"The cosine similarity of dog and cat is {cat_dog_cos2:.3f}")
+```
+
+### With more dimensions
+
+The basic principles remain the same even if we start including even more dimensions. For example, let's say we added size to the set of features for each animal.
+
+```{r}
+library(plotly)
+
+animal_vec %>%
+  mutate(size = c(10, 90, 30, 60))->animal_vec3
+```
+
+```{r}
+#| results: markup
+animal_vec3 %>%
+  knitr::kable()
+```
+
+```{r}
+animal_vec3 %>%
+  pivot_longer(2:4) %>%
+  mutate(n = 1)->long_vec
+
+long_vec %>%
+    mutate(value = 0, n = 0) %>%
+           bind_rows(long_vec) %>%
+           pivot_wider(names_from = "name", values_from = value) -> path_vec
+```
+
+```{r}
+library(plotly)
+plot_ly()%>%
+    add_trace(data = path_vec, x=~domesticated, y=~feline, z=~size, color=~animal,
+              mode = "lines",
+              colors = "Dark2") %>%
+    add_trace(data = animal_vec3, x=~domesticated, y=~feline, z=~size, color=~animal,
+              colors = "Dark2") %>%
+    layout(scene = list(xaxis = list(range = c(0,100)),
+                        yaxis = list(range = c(0,100)),
+                        zaxis = list(range = c(0,100))))
+```
+
+We can do all the same things we did before, with the same math.
+
+```{python}
+#| echo: true
+dog = np.array([90, 30, 30])
+cat = np.array([70, 100, 10])
+
+dog_mag = np.linalg.norm(dog)
+cat_mag = np.linalg.norm(cat)
+
+print(f"dog magnitude: {dog_mag:.2f}, cat magnitude: {cat_mag:.3f}")
+
+dog_cat_cos = np.dot(dog, cat)/(dog_mag * cat_mag)
+print(f"dog and cat cosine similarity: {dog_cat_cos:.2f}")
+```
+
+## What does this have to do with NLP?
+
+Before we get to word, vectors, we can start talking about "document" vectors. I've collapsed the next few code blocks for downloading a bunch of books by Mary Shelley and Jules Verne so we can focus on the "vectors" part.
+
+```{python}
+#| echo: true
+#| code-fold: true
+#| code-summary: "a get book function"
+import gutenbergpy.textget
+def getbook(book, outfile):
+  """
+  Download a book from project Gutenberg and save it 
+  to the specified outfile
+  """
+  print(f"Downloading Project Gutenberg ID {book}")
+  raw_book = gutenbergpy.textget.get_text_by_id(book)
+  clean_book = gutenbergpy.textget.strip_headers(raw_book)
+  if not outfile:
+    outfile = f'{book}.txt'
+    print(f"Saving book as {outfile}")
+  with open(outfile, 'wb') as file:
+    file.write(clean_book)
+    file.close()
+
+```
+
+```{python}
+#| echo: true
+#| code-fold: true
+#| code-summary: "Project Gutenberg information"
+mary_shelley_ids = [84, 15238, 18247, 64329]
+mary_shelley_files =  [f"gen/books/shelley/{x}.txt" for x in mary_shelley_ids]
+mary_shelley_titles = ["Frankenstein", "Mathilda", "The Last Man", "Falkner"]
+jules_verne_ids = [103, 164, 1268, 18857]
+jules_verne_files = [f"gen/books/verne/{x}.txt" for x in jules_verne_ids]
+jules_verne_titles = ["80days", "ThousandLeagues", "MysteriousIsland", "CenterOfTheEarth"]
+```
+
+```{python}
+#| eval: false
+#| echo: true
+foo = [getbook(x, f"gen/books/shelley/{x}.txt") for x in mary_shelley_ids]
+foo = [getbook(x, f"gen/books/verne/{x}.txt") for x in jules_verne_ids]
+```
+
+We're going to very quickly tokenize these books into words, and then get just unigram counts for each book
+
+```{python}
+
+```
+
+```{python}
+#| echo: true
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
+```
+
+```{python}
+#| echo: true
+def get_unigram_counts(path):
+  """
+    Given a path, generate a counter dictionary of unigrams
+  """
+  with open(path, 'r') as f:
+    text = f.read()
+  text = text.replace("\n", " ").lower()
+  unigrams = RegexpTokenizer(r"\w+").tokenize(text)
+  count = Counter(unigrams)
+  return(count)
+```
+
+```{python}
+#| echo: true
+shelley_words = {k:get_unigram_counts(v) 
+                    for k, v in zip(mary_shelley_titles, mary_shelley_files)}
+verne_words = {k:get_unigram_counts(v) 
+                    for k, v in zip(jules_verne_titles, jules_verne_files)}
+```
+
+So now, `shelley_words` is a dictionary with keys for each book:
+
+```{python}
+#| echo: true
+shelley_words.keys()
+```
+
+And the value associated with each key is the unigram count of word in that book:
+
+```{python}
+#| echo: true
+shelley_words["Frankenstein"].most_common(10)
+```
+
+### Books in word count vector space
+
+Before were were classifying animals in the "feline" and "domesticated" vector space. What if we classified These book by Mary Shelley and Jules Verne in the "monster" and "sea" vector space. We'll just compare them in terms of how many times the word "monster" and "sea" appeared in each of their books.
+
+```{python}
+#| echo: true
+def get_term_count(book_dict, term):
+  """
+    return a list of the number of times a term has appeared
+    in a book
+  """
+  out = [book_dict[book][term] for book in book_dict]
+  return(out)
+
+```
+
+```{python}
+from tabulate import tabulate
+```
+
+```{python}
+#| echo: true
+monster = ["monster"] + \
+          get_term_count(shelley_words, "monster") + \
+          get_term_count(verne_words, "monster")
+sea  = ["sea"] + \
+          get_term_count(shelley_words, "sea") + \
+          get_term_count(verne_words, "sea")
+          
+```
+
+```{python}
+#| output: asis
+transpose = list(zip(mary_shelley_titles+jules_verne_titles, monster[1:], sea[1:]))
+print(tabulate(transpose, headers=["book", "monster", "sea"]))
+```
+
+So, in the "monster", "sea" vector space, we'd say *Frankenstein* has a vector of \[31, 31\], and *Around the World in 80 Days* has a vector of \[0, 52\]. We can make a vector plot for these books in much the same way we did for the animals in the "feline" and "domesticated" vector space.
+
+```{python}
+import pandas as pd
+```
+
+```{python}
+sm_df = pd.DataFrame(
+  {"sea": sea[1:],
+   "monster": monster[1:],
+   "title" : mary_shelley_titles + jules_verne_titles,
+   "author" : ["Mary Shelley"]*4 + ["Jules Verne"]*4
+  }
+)
+```
+
+```{r}
+#| label: fig-monster-vec
+#| fig-cap: "Selected Mary Shelley and Jules Verne novels in the `monster`,`sea` vector space"
+py$sm_df %>%
+  ggplot(aes(color = author, x = monster, y = sea))+
+    geom_segment(x = 0, y = 0, 
+                 aes(xend = monster, yend = sea),
+                 arrow = arrow(type = "closed", length = unit(0.1, 'cm')),
+                 key_glyph = draw_key_rect)+
+    geom_text_repel(aes(label = title), size = 3, min.segment.length = 0.1)+
+    scale_color_vibrant()+
+    expand_limits(y = 0, x = 0)
+```
+
+We can also do all of the same vector computations we did before. In @fig-monster-vec, *Frankenstein* and *Around the World in 80 Days* seem to have the largest angle between them. Let's calculate it!
+
+```{python}
+#| echo: true
+frank = [shelley_words["Frankenstein"][word] for word in ["monster", "sea"]]
+eighty = [verne_words["80days"][word] for word in ["monster", "sea"]]
+```
+
+```{python}
+#| echo: true
+print(frank)
+print(eighty)
+```
+
+Let's get their cosine similarity the fast way with `scipy.spatial.distance.cosine()`
+
+```{python}
+#| echo: true
+# scipy already imported
+1 - spatial.distance.cosine(frank, eighty)
+```
+
+The novels *Mathilda* and *Journey to the Center of the Earth*, on the other hand, look like they have almost identical angles.
+
+```{python}
+#| echo: true
+mathilda = [shelley_words["Mathilda"][word] for word in ["monster", "sea"]]
+center = [verne_words["CenterOfTheEarth"][word] for word in ["monster", "sea"]]
+```
+
+```{python}
+#| echo: true
+print(mathilda)
+print(center)
+```
+
+```{python}
+#| echo: true
+
+1 - spatial.distance.cosine(mathilda, center)
+```
+
+Here's table of every novel's cosine similarity from the other in "monster", "sea" vector space,
+
+```{python}
+all_vectors = [frank, mathilda, eighty, center]
+titles = ["Fankenstein", "Mathilda", "EightyDay", "CenterOfTheEarth"]
+```
+
+```{python}
+#| results: asis
+out_dist = [[np.nan]*len(titles) for title in titles]
+
+for i in range(len(titles)):
+  dist_list = [''] * len(titles)
+  for j in range(i, len(titles)):
+    distance = 1-spatial.distance.cosine(all_vectors[i], all_vectors[j])
+    dist_list[j] = round(distance, ndigits=2)
+  out_dist[i] = dist_list
+
+for i in range(len(titles)):
+  out_dist[i].insert(0, titles[i] )
+print(tabulate(out_dist, headers=[""] + titles))
+```
+
+### The *full* vector space
+
+Of course, we are not limited to calculating cosine similarity on just *two* dimensions. We could use the *whole* shared vocabulary between two novels to compute the cosine similarity.
+
+```{python}
+#| echo: true
+shared_vocab = set(list(shelley_words["Frankenstein"].keys()) + 
+                   list(verne_words["80days"].keys()))
+print(f"Total dimensions: {len(shared_vocab)}")
+
+frankenstein_vector = [shelley_words["Frankenstein"][v] for v in shared_vocab]
+eighty_vector = [verne_words["80days"][v] for v in shared_vocab]
+
+1 - spatial.distance.cosine(frankenstein_vector, eighty_vector)
+```
+
+### Author Identification?
+
+```{python}
+#| echo: true
+mystery1 = getbook(6447, outfile="gen/books/shelley/6447.txt")
+```
+
+```{python}
+#| echo: true
+mystery = get_unigram_counts("gen/books/shelley/6447.txt")
+```
+
+```{python}
+#| echo: true
+def get_dist(book1, book2):
+  """
+    given unigram counts from two books
+    return the cosine distance
+  """
+  shared_vocab = set(list(book1.keys()) + list(book2.keys()))
+  
+  book1_vec = [book1[v] for v in shared_vocab]
+  book2_vec = [book2[v] for v in shared_vocab]
+  
+  sim = 1-spatial.distance.cosine(book1_vec, book2_vec)
+  return(sim)
+```
+
+```{python}
+#| echo: true
+shelley_dist = [get_dist(shelley_words[book], mystery) for book in shelley_words]
+```
+
+```{python}
+#| echo: true
+np.mean(shelley_dist)
+```
+
+```{python}
+#| echo: true
+verne_dist = [get_dist(verne_words[book], mystery) for book in verne_words]
+```
+
+```{python}
+#| echo: true
+np.mean(verne_dist)
+```

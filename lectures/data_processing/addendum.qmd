@@ -9,6 +9,8 @@ knitr:
     echo: false
     message: false
     warning: false
+categories:
+  - "data"
 editor: visual
 ---
 
@@ -130,8 +132,7 @@ spacy_df %>%
 ## Tokenizing with spaCy
 
 ```{r}
-library(reticulate)
-use_condaenv("./env")
+source("renv/activate.R")
 ```
 
 ```{zsh}

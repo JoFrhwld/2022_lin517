@@ -6,6 +6,8 @@ author:
 date: "2022-9-6"
 editor: visual
 bibliography: references.bib
+categories:
+  - "data"
 ---
 
 ## Most data analysis time is spent on data wrangling
