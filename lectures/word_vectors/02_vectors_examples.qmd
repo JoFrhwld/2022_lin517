@@ -1,0 +1,547 @@
+---
+title: "Term-Document and Term-Term matrices"
+editor: visual
+bibliography: references.bib
+---
+
+## Outline
+
+## Term-Document Matrices
+
+Last time, we started looking at limited view of Term-Document matrices. Here we've got books in the rows, and the words `monster` and `sea` as the dimensions of the vector space.
+
+```{python}
+#| code-fold: true
+#| code-summary: Code to download and process books from Project Gutenberg.
+#| label: tbl-monster-sea
+#| tbl-cap: "Books by Mary Shelley and Jules Verne in the 'monster', 'sea' vector space."
+#| tbl-cap-location: bottom
+#| output: asis
+import gutenbergpy.textget
+from nltk.tokenize import RegexpTokenizer
+from collections import Counter
+from tabulate import tabulate
+from os.path import exists
+
+def getbook(book, outfile):
+  """
+  Download a book from project Gutenberg and save it 
+  to the specified outfile
+  """
+  if exists(outfile):
+    pass
+  else:
+    print(f"Downloading Project Gutenberg ID {book}")
+    raw_book = gutenbergpy.textget.get_text_by_id(book)
+    clean_book = gutenbergpy.textget.strip_headers(raw_book)
+    if not outfile:
+      outfile = f'{book}.txt'
+      print(f"Saving book as {outfile}")
+    with open(outfile, 'wb') as file:
+      file.write(clean_book)
+      file.close()
+
+def get_unigram_counts(path):
+  """
+    Given a path, generate a counter dictionary of unigrams
+  """
+  with open(path, 'r') as f:
+    text = f.read()
+  text = text.replace("\n", " ").lower()
+  unigrams = RegexpTokenizer(r"\w+").tokenize(text)
+  count = Counter(unigrams)
+  return(count)
+
+def get_term_count(book_dict, term):
+  """
+    return a list of the number of times a term has appeared
+    in a book
+  """
+  out = [book_dict[book][term] for book in book_dict]
+  return(out)
+    
+mary_shelley_ids = [84, 15238, 18247, 64329]
+mary_shelley_files =  [f"gen/books/shelley/{x}.txt" for x in mary_shelley_ids]
+mary_shelley_titles = ["Frankenstein", "Mathilda", "The Last Man", "Falkner"]
+jules_verne_ids = [103, 164, 1268, 18857]
+jules_verne_files = [f"gen/books/verne/{x}.txt" for x in jules_verne_ids]
+jules_verne_titles = ["80days", "ThousandLeagues", "MysteriousIsland", "CenterOfTheEarth"]
+
+foo = [getbook(x, f"gen/books/shelley/{x}.txt") for x in mary_shelley_ids]
+foo = [getbook(x, f"gen/books/verne/{x}.txt") for x in jules_verne_ids]
+
+
+
+shelley_words = {k:get_unigram_counts(v) 
+                    for k, v in zip(mary_shelley_titles, mary_shelley_files)}
+verne_words = {k:get_unigram_counts(v) 
+                    for k, v in zip(jules_verne_titles, jules_verne_files)}
+
+monster = ["monster"] + \
+          get_term_count(shelley_words, "monster") + \
+          get_term_count(verne_words, "monster")
+sea  = ["sea"] + \
+          get_term_count(shelley_words, "sea") + \
+          get_term_count(verne_words, "sea")                 
+
+transpose = list(zip(mary_shelley_titles+jules_verne_titles, monster[1:], sea[1:]))
+print(tabulate(transpose, headers=["book", "monster", "sea"]))
+
+```
+
+I call this a "limited" term-document matrix, since we're only looking at the frequency of two hand-picked word dimensions. If we'd chosen some other words to serve as the dimensions, some of them will have very high counts, and others will be mostly 0. For example, `the` appears very frequently in all books, and `illustration` doesn't appear at all in most of the books.
+
+```{python}
+#| label: tbl-the-illustration
+#| output: asis
+#| code-fold: true
+#| code-summary: "Code to generate the 'the', 'illustration' table."
+#| tbl-cap: "Books by Mary Shelley and Jules Verne in the 'the', 'illustration' vector space."
+#| tbl-cap-location: margin
+the =  [verne_words[book]["the"] for book in verne_words] + \
+                [shelley_words[book]["the"] for book in shelley_words]
+illustration = [verne_words[book]["illustration"] for book in verne_words] + \
+                [shelley_words[book]["illustration"] for book in shelley_words]
+titles = [book for book in verne_words] + [book for book in shelley_words]
+
+print(
+  tabulate(
+    list(zip(titles, the, illustration)), 
+    headers=["book", "the", "illustration"],
+    intfmt=","
+  )
+)
+          
+```
+
+There' also nothing particularly special about any two words chosen words in each book. Ideally we'd be representing each book with the *entire* word vector.
+
+### Getting the whole term-document matrix: python time
+
+Right now, I have Counter dictionaries for each book stored like this:
+
+    # This is pseudocode
+    author_words = {
+      book: {w1: c1,
+             w2: c2,
+             ...},
+      ...
+    }
+
+To get the complete term-document matrix, I'm going to have to:
+
+-   combine the words from each dictionary into one big set
+
+-   get the count of each word in each dictionary.
+
+I'll then convert the lists I get into one big numpy matrix.
+
+::: callout-note
+There are some ways to make term-document matrices with the `nltk` or `scikit-learn` that don't involve writing so much code, but they also don't show how they work as explicitly as the code below. So for the purpose of teaching, I'm writing it all out long-hand.
+:::
+
+```{python}
+import numpy as np
+```
+
+First, I'll get a list of the book titles, since this will be handy for making tables later on.
+
+```{python}
+book_titles = [book for book in shelley_words] + [book for book in verne_words]
+book_titles
+```
+
+I need to get one big vocabulary that has just one entry per word that appears in *all* of the books. I'm using [python sets](https://www.w3schools.com/python/python_sets.asp) to do this.
+
+```{python}
+# Start with empty set
+big_vocab= set()
+
+# For every book in Shelley's works, 
+# get the Union of `big_vocab` and that book's vocabulary.
+for book in shelley_words:
+  this_vocab = set(shelley_words[book].keys())
+  big_vocab = big_vocab.union(this_vocab)
+  
+# Repeat for Jules Verne
+for book in verne_words:
+  this_vocab = set(verne_words[book].keys())
+  big_vocab = big_vocab.union(this_vocab)
+  
+# Convert the set to a list so that we can index it normally
+big_vocab = list(big_vocab)
+
+# Total vocab size:
+print(f"The total vocabulary size is {len(big_vocab):,} words")
+```
+
+Here, I create a list of each word's frequency in each book, then convert it all to a numpy matrix.
+
+```{python}
+word_counts = []
+for word in big_vocab:
+  document_vector = [shelley_words[book][word] for book in shelley_words] +\
+                      [verne_words[book][word] for book in verne_words]
+  word_counts.append(document_vector)
+
+word_matrix = np.array(word_counts)
+```
+
+Let's double check what this matrix looks like:
+
+```{python}
+print(word_matrix)
+```
+
+```{python}
+word_matrix.shape
+```
+
+So, there are 24,681 rows, and 8 columns in the matrix. So 1 row for each word, 1 column for each book. We can double check that the numbers look like we expect by getting the indices for specific words, and slicing the term-document matrix:
+
+```{python}
+example_words = ["the", "illustration", "monster", "sea"]
+example_idx = [big_vocab.index(w) for w in example_words]
+```
+
+```{python}
+print(word_matrix[example_idx, :])
+```
+
+::: callout-note
+## Sparse Matrix
+
+Term-document matrices are almost always "sparse" matrices. "Sparse" meaning a *lot* of its values are 0. We can calculate how many cells of this matrix have counts greater than zero with some numpy tricks.
+
+First, we say `word_matrix>0`, it will give us back a matrix of the same size, with `True` where the expression is true and `False` where the expression is false.
+
+```{python}
+word_matrix>0
+```
+
+The nifty thing is that we can treat a numpy array of `True` and `False` like a matrix of `1` and `0` values, where `True` gets converted to `1` and `False` gets converted to `0`. If we just use `np.mean()` on this `True`/`False` matrix, we'll just get the proportion of values that are greater than 0!
+
+```{python}
+np.mean(word_matrix>0)
+```
+
+Only about 34% of all cells in the matrix have a count greater than 0! This is a matrix *mostly* of 0s.
+:::
+
+### What's an important word *for* each document (tf--idf)?
+
+We could start comparing documents with the cosine similarity of their word counts. Here's how we'd do it for *Frankenstein* (index `0`) and *Around the world in 80 Days* (index 4).
+
+```{python}
+from scipy.spatial.distance import cosine
+1 - cosine(word_matrix[:,0], word_matrix[:, 4])
+```
+
+Looks like they're very similar! But then, they *would*. For most of the words they have in common, those words are going to have very large frequencies.
+
+::: {layout-ncol="2"}
+```{python}
+#| echo: false
+#| output: asis
+print(tabulate(shelley_words["Frankenstein"].most_common(10),
+      headers=["Frankenstein",''],
+      intfmt=",", 
+      colalign=['left','right']  , 
+      tablefmt="pipe"))
+```
+
+```{python}
+#| echo: false
+#| output: asis
+print(tabulate(verne_words["80days"].most_common(10),
+      headers=["80days", ''], 
+      intfmt=",", 
+      colalign=['left','right']  , 
+      tablefmt="pipe"))
+```
+:::
+
+We want to treat frequent words in each document as *important* for characterizing that document, while at the same time not giving too much weight to words that are frequent in *every* document. In comes "tf--idf".
+
+#### Tf--idf
+
+"Tf--idf" stands for "term frequency-inverse document frequency". Annoyingly, the "--" in its name is a *hyphen*, so we're not doing subtraction.
+
+"Term frequency" is the frequency of each word within each document. It's really just the `word_matrix` we've already made. Except we take the log-transform of the frequency.
+
+We've looked at the log transform before, but just to remind you, it has the effect of squashing down the right side of a distribution, and stretching out the left side of a distribution.
+
+```{r}
+#| fig-width: 3
+#| fig-height: 3
+#| echo: false
+library(reticulate)
+library(tidyverse)
+library(scales)
+
+tibble(freq = py$word_matrix[,1]) %>%
+  filter(freq > 0) %>%
+  ggplot(aes(freq)) +
+    stat_bin(bins = 15)+
+    labs(x = "word frequencies",
+         y = "num of words with this frequency",
+         title = "Word counts in Frankenstein")+
+    scale_x_continuous(labels = label_comma())+
+    scale_y_continuous(labels = label_comma())+
+    theme_minimal()
+```
+
+```{r}
+#| fig-width: 3
+#| fig-height: 3
+#| echo: false
+library(reticulate)
+library(tidyverse)
+library(scales)
+
+tibble(freq = py$word_matrix[,1]) %>%
+  filter(freq > 0) %>%
+  ggplot(aes(log10(freq))) +
+    stat_bin(bins = 15)+
+    labs(x = "log10(word frequencies)",
+         y = "num of words with this frequency",
+         title = "Word counts in Frankenstein")+
+    scale_x_continuous(labels = label_comma())+
+    scale_y_continuous(labels = label_comma())+
+    theme_minimal()
+```
+
+*But* remember how most of the numbers in `word_matrix` are 0?
+
+```{python}
+np.log10(0)
+```
+
+So, what we do to fix this is add 1 to every value (yes, again) and take the log10 of that.
+
+```{python}
+tf = np.log10(word_matrix + 1)
+```
+
+Next, for every word we get a count of how many documents it appeared in. So, "the" appeared in all 8 books, so it will have a document frequency of 8. "Illustration" only appeared in 3 books, so it will have a document frequency of 3.
+
+We can use another handy feature of numpy, and tell it to sum across the columns (`axis=1`)
+
+```{python}
+df = np.sum(word_matrix > 0, axis = 1)
+df.shape
+```
+
+```{python}
+df
+```
+
+But the measure we use is *inverse* document frequency. For that, we actually do $\frac{N}{df}$ where $N$ is the total number of documents. And then, for good measure, we also take the log10 transform.
+
+```{python}
+idf = np.log10(8/df)
+```
+
+To get the tf-idf, we just multiply each book's term frequency vector by the inverse document frequency vector.
+
+```{python}
+tf_idf = tf * idf[:, np.newaxis]
+```
+
+#### The upshot
+
+After all of this, we have a measure for each word within each book that balances out its frequency in *this* book and its appearance frequency across all books.
+
+| tf                                      | idf                                   | tf-idf            |
+|-----------------------------------------|---------------------------------------|-------------------|
+| Frequent word in this book (large tf)   | Appears in most books (small idf)     | Mediocre tf-idf   |
+| Infrequent word in this book (small tf) | Appears in most books (small idf)     | Very small tf-idf |
+| Frequent word in this book (large tf)   | Appears in very few books (large idf) | Large tf-idf      |
+
+#### The Results
+
+Let's explore these tf-idf values. First, we can get the indicies of the words in each book with the largest tf-idf values with `.argmax(axis=0)`.
+
+```{python}
+largest_tfidf = tf_idf.argmax(axis = 0)
+largest_tfidf_words = [big_vocab[x] for x in largest_tfidf]
+```
+
+```{python}
+#| echo: false
+#| output: asis
+print(tabulate(list(zip(book_titles, largest_tfidf_words))))
+```
+
+We can get the indicies of the top 5 using `.argsort()` like this:
+
+```{python}
+top_five = (tf_idf * -1).argsort(axis = 0)[0:5, :]
+```
+
+```{python}
+#| output: asis
+top_five_words = np.empty(shape = (5,8), dtype = 'object')
+for i in range(top_five.shape[0]):
+  for j in range(top_five.shape[1]):
+    top_five_words[i,j] = big_vocab[top_five[i,j]]
+
+```
+
+```{python}
+book_titles
+```
+
+```{python}
+top_five_words.T
+```
+
+```{python}
+#| echo: false
+#| results: asis
+print(tabulate(top_five_words, headers=book_titles))
+```
+
+We can even calculate the cosine similarity of each book from every other book with these tf-idf vectors.
+
+```{python}
+#| output: asis
+from scipy.spatial.distance import cosine
+dists = np.empty(shape = (8,8))
+for i in range(8):
+  for j in range(8):
+    dists[i,j] = 1-cosine(tf_idf[:, i], tf_idf[:, j])
+print(tabulate(dists, headers=book_titles, showindex=book_titles,floatfmt=".2f"))
+```
+
+## Term-context matrix
+
+Term-document matrices can be useful for classifying and describing documents, but if we wanted to come up with vector representations to describe *words*, we need to build a term-context matrix. The basic intuition behind most vector-semantics draws from the Distributional Hypothesis [@harris1954], which we can illustrate like this.
+
+Try to come up with words that you think are likely to appear in the blank:
+
+-   The elderly \_\_ spoke.
+
+Now do the same thing with this phrase:
+
+-   The playful \_\_ jumped.
+
+You probably came up with different sets of words in each context. The idea here is that certain words are more *likely* to appear in certain contexts, and the more contexts two words share, the more similar they are.
+
+### A quick and dirty term-context matrix
+
+We'll build a quick and dirty term-context matrix with Frankenstein. Often people exclude "stopwords", like function words at this stage.
+
+```{python}
+with open(mary_shelley_files[0], 'r') as f:
+  text = f.read()
+unigrams = RegexpTokenizer(r"\w+").tokenize(text.replace("\n", " ").lower())
+
+```
+
+To build a term-context matrix, we basically look at a "concordance" of every word in the book. We set a context size of some number of words preceding and some number of words following the target word, and then pull those examples out. Let's do that for "monster."
+
+```{python}
+context_size = 3
+for idx in range(context_size, len(unigrams)-context_size):
+  if unigrams[idx] == "monster":
+    full_context = unigrams[idx-context_size : idx+1+context_size]
+    print(full_context)
+```
+
+Here, we'll call `monster` the target, or \$w\$, and every other word in the context a context word, or $c$. To build a term-context matrix, we would need a row of the matrix to be dedicated to the word `monster`, and columns for every possible word that could occur around `monster`. We'd then go and add 1 to the relevant column each time we saw a word in the context of `monster`.
+
+To do this in practice, we need to get a vocuabulary of unique words that appear in the book, and also convenient ways to convert a word string into an index, and a convenient way to convert an index to a word.
+
+```{python}
+vocabulary = set(unigrams)
+word_to_index = {w:idx for idx, w in enumerate(vocabulary)}
+index_to_word = {idx:w for idx, w in enumerate(vocabulary)}
+```
+
+Then, we need to create a matrix full of zeros with a row and column for each word in the vocabulary.
+
+```{python}
+term_context = np.zeros(shape = (len(vocabulary), len(vocabulary)))
+```
+
+Then, we just loop through the book, adding 1 to every cell where the target word (in the rows) appears in the context of another word (in the columns).
+
+```{python}
+context_size = 3
+for i in range(context_size, len(unigrams)-context_size):
+  word = unigrams[i]
+  word_index = word_to_index[word]
+  prewindow = unigrams[i-context_size : i]
+  postwindow = unigrams[i+1 : i+1+context_size]
+  context = prewindow + postwindow
+  for c in context:
+    c_index = word_to_index[c]
+    term_context[word_index, c_index] += 1
+
+```
+
+Now, if the term-document matrix was sparse, this is *super* sparse.
+
+```{python}
+np.mean(term_context>0)
+```
+
+Let's get the 5 most common words that appear in the context of "monster".
+
+```{python}
+monster_idx = word_to_index["monster"]
+monster_array = term_context[monster_idx, :]
+top_five_monster_idx = (monster_array*-1).argsort()[0:5]
+top_five_monster_word = [index_to_word[idx] for idx in top_five_monster_idx]
+top_five_monster_word
+```
+
+```{python}
+dist_from_monster = []
+for i in range(len(vocabulary)):
+  dist_from_monster.append(cosine(monster_array, term_context[i, :]))
+```
+
+```{python}
+monster_disr_arr = np.array(dist_from_monster)
+```
+
+```{python}
+monster_sim = monster_disr_arr.argsort()[0:10]
+monster_sim_word = [index_to_word[idx] for idx in monster_sim]
+monster_sim_word
+```
+
+### Positive Pointwise Mutual Information
+
+Similar problem as before, with words appearing very similar because very frequent words show up in a lot of contexts.
+
+```{python}
+joint_prob = term_context/sum(term_context)
+
+word_C = np.sum(term_context, axis = 1)
+word_prob = word_C / sum(word_C)
+
+context_C = np.sum(term_context, axis = 0)
+context_prob =context_C/sum(context_C)
+
+joint_exp = np.outer(word_prob, context_prob)
+
+PMI = np.log2(joint_prob/joint_exp)
+PMI[PMI < 0] = 0
+```
+
+```{python}
+monster_array = PMI[monster_idx, :]
+dist_from_monster = []
+for i in range(len(vocabulary)):
+  dist_from_monster.append(cosine(monster_array, PMI[i, :]))
+```
+
+```{python}
+monster_disr_arr = np.array(dist_from_monster)
+monster_sim = monster_disr_arr.argsort()[0:10]
+monster_sim_word = [index_to_word[idx] for idx in monster_sim]
+monster_sim_word
+```
