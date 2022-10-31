@@ -37,6 +37,7 @@ website:
             href: "lectures/word_vectors/index.qmd"
             contents:
               - href: "lectures/word_vectors/01_concept.qmd"
+              - href: "lectures/word_vectors/02_vectors_examples.qmd"
           - section: "Models"
             contents:
               - href: "lectures/evaluation/index.qmd"
