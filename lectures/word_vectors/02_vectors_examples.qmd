@@ -353,7 +353,7 @@ tf_idf = tf * idf[:, np.newaxis]
 After all of this, we have a measure for each word within each book that balances out its frequency in *this* book and its appearance frequency across all books.
 
 | tf                                      | idf                                   | tf-idf            |
-|-----------------------------------------|---------------------------------------|-------------------|
+|----------------------------|---------------------------|-----------------|
 | Frequent word in this book (large tf)   | Appears in most books (small idf)     | Mediocre tf-idf   |
 | Infrequent word in this book (small tf) | Appears in most books (small idf)     | Very small tf-idf |
 | Frequent word in this book (large tf)   | Appears in very few books (large idf) | Large tf-idf      |
@@ -386,14 +386,6 @@ for i in range(top_five.shape[0]):
   for j in range(top_five.shape[1]):
     top_five_words[i,j] = big_vocab[top_five[i,j]]
 
-```
-
-```{python}
-book_titles
-```
-
-```{python}
-top_five_words.T
 ```
 
 ```{python}
@@ -497,6 +489,8 @@ top_five_monster_word = [index_to_word[idx] for idx in top_five_monster_idx]
 top_five_monster_word
 ```
 
+At this stage, we *could* just use these raw counts to calculate the cosine similarity between words,
+
 ```{python}
 dist_from_monster = []
 for i in range(len(vocabulary)):
@@ -544,4 +538,158 @@ monster_disr_arr = np.array(dist_from_monster)
 monster_sim = monster_disr_arr.argsort()[0:10]
 monster_sim_word = [index_to_word[idx] for idx in monster_sim]
 monster_sim_word
+```
+
+## Doing it not "by hand"
+
+### Tf-idf
+
+#### In Python
+
+The key function here is `TfidfVectorizer`
+
+```{python}
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+```
+
+This is just info and a helper function to read in the data.
+
+```{python}
+mary_shelley_ids = [84, 15238, 18247, 64329]
+mary_shelley_files =  [f"gen/books/shelley/{x}.txt" for x in mary_shelley_ids]
+mary_shelley_titles = ["Frankenstein", "Mathilda", "The Last Man", "Falkner"]
+jules_verne_ids = [103, 164, 1268, 18857]
+jules_verne_files = [f"gen/books/verne/{x}.txt" for x in jules_verne_ids]
+jules_verne_titles = ["80days", "ThousandLeagues", "MysteriousIsland", "CenterOfTheEarth"]
+```
+
+```{python}
+all_files = mary_shelley_files + jules_verne_files
+def read_and_normalize(path):
+  """
+    will read a document and normalize its text
+  """
+  with open(path, 'r') as f:
+    text = f.read()
+  text = text.replace("\n", " ").lower()
+  return(text)
+```
+
+**The important part**: `documents` is a with 8 values in it. Each value is a string, and contains the entire text of each book.
+
+```{python}
+documents = [read_and_normalize(path) for path in all_files]
+```
+
+Line 1 sets up the rules we're going to use for the tf-idf calculation. What `TfidfVectorizer` does by default does not match the math we did above, and even with these settings, it's not going to be exactly similar.
+
+```{python}
+vectorizer = TfidfVectorizer(smooth_idf = False, sublinear_tf = True)
+tfidf = vectorizer.fit_transform(documents)
+```
+
+The resulting `tfidf` matrix puts the books along the rows and the words along the columns.
+
+```{python}
+tfidf.shape
+```
+
+`cosine_similarity` will do a rowwise comparison.
+
+```{python}
+similarities = cosine_similarity(tfidf)
+print(np.around(similarities, 3))
+```
+
+```{python}
+# Looking at self-similarity
+shelley_self = similarities[0:4, 0:4]
+shelley_self[np.triu_indices(4, k = 1)].mean()
+```
+
+```{python}
+# Looking at self-similarity
+verne_self = similarities[4:8, 4:8]
+verne_self[np.triu_indices(4, k = 1)].mean()
+```
+
+```{python}
+# Looking at cross-similarity
+cross_sim = similarities[0:4, 4:8]
+cross_sim.mean() 
+```
+
+#### In R
+
+```{r}
+#| filename: "R"
+library(gutenbergr)
+library(tidyverse)
+library(tidytext)
+library(lsa)
+```
+
+(I'm using a special R package to access variables that I declared in python)
+
+```{r}
+#| filename: "R"
+book_ids <- c(py$mary_shelley_ids, py$jules_verne_ids)
+book_ids
+```
+
+```{r}
+#| filename: "R"
+books <- gutenberg_download(book_ids)
+```
+
+```{r}
+#| filename: "R"
+books %>%
+  group_by(gutenberg_id) %>%
+  unnest_tokens(input = text, output = words) %>%
+  count(gutenberg_id, words) %>%
+  ungroup() %>%
+  bind_tf_idf(words, gutenberg_id, n) -> books_tf_idf
+```
+
+```{r}
+#| filename: "R"
+books_tf_idf %>%
+  group_by(gutenberg_id) %>%
+  arrange(desc(tf_idf)) %>%
+  slice(1:3) %>%
+  knitr::kable(digits = 3)
+```
+
+```{r}
+#| filename: R
+frank <- books_tf_idf %>% filter(gutenberg_id == 84) %>% pull(tf_idf)
+```
+
+```{r}
+#| filename: R
+books_tf_idf %>%
+  ungroup() %>%
+  complete(gutenberg_id, words, fill=list(tf_idf = 0)) %>%
+  arrange(words) -> tf_idf_complete
+```
+
+```{r}
+#| filename: R
+tf_idf_complete %>%
+  filter(gutenberg_id == 84) %>%
+  pull(tf_idf) -> frank_vector
+```
+
+```{r}
+#| filename: R
+tf_idf_complete %>%
+  filter(gutenberg_id == 103) %>%
+  pull(tf_idf) -> eighty_vector
+```
+
+```{r}
+#| filename: R
+cosine(frank_vector, eighty_vector)
 ```
