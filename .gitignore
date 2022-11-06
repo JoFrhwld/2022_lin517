@@ -12,3 +12,4 @@ renv/
 **/*_files/
 **/*.html
 !_site/*
+*.gz

@@ -1,7 +1,11 @@
 ---
-title: "Term-Document and Term-Term matrices"
+title: "Term-Document and Term-Context matrices"
 editor: visual
+author: "Josef Fruehwald"
+date: "2022-11-1"
 bibliography: references.bib
+categories:
+  - "word vectors"
 ---
 
 ## Outline

@@ -331,25 +331,30 @@ penguins = load_penguins()
 
 ```{python}
 bill_length = np.array(penguins.dropna()["bill_length_mm"])
-bill_depth = np.array(penguins.dropna()["bill_depth_mm"])
+body_mass = np.array(penguins.dropna()["body_mass_g"])
 ```
 
 ```{python}
-X = np.stack([np.ones(bill_length.size), bill_length], axis = 1)
-X[0:10, ]
+bill_length_z = (bill_length - bill_length.mean())/bill_length.std()
+body_mass_z = (body_mass - body_mass.mean())/body_mass.std()
 ```
 
 ```{python}
-param_guess = np.array([1., 3.])
-depth_guess = np.dot(X, param_guess)
+bill_length_X = np.stack([np.ones(bill_length_z.size), bill_length_z], axis = 1)
+bill_length_X[0:10, ]
 ```
 
 ```{python}
-np.mean(np.power(bill_depth - depth_guess, 2))
+param_guess = np.array([0., 0.])
+mass_guess = np.dot(bill_length_X, param_guess)
 ```
 
 ```{python}
-def fit_depth(params, X):
+np.mean(np.power(body_mass_z - mass_guess, 2))
+```
+
+```{python}
+def fit_mass(params, X):
   """
     Given some values and parameters
     guess the outcome 
@@ -361,7 +366,7 @@ def fit_loss(params, X, actual):
   """
     Return the loss of the params
   """
-  est = fit_depth(params, X)
+  est = fit_mass(params, X)
   err = est - actual
   sq_err = jnp.power(err, 2)
   mse = jnp.mean(sq_err)
@@ -371,42 +376,317 @@ fit_grad = grad(fit_loss, argnums=0)
 ```
 
 ```{python}
-fit_loss(param_guess, X, bill_depth)
+fit_loss(param_guess, bill_length_X, body_mass_z)
 ```
 
 ```{python}
-fit_grad(param_guess, X, bill_depth)
+fit_grad(param_guess, bill_length_X, body_mass_z)
 ```
 
 ```{python}
-# I want to be able to plot everything after, so I'm going to create collectors.
 epoch_list    = []
 param_list    = []
 loss_list     = []
 gradient_list = []
-```
 
-```{python}
-param_guess = np.array([18., 0.])
-learning_rate = 0.00001
-vt = np.array([0., 0.])
-for i in range(10):
+# I'm cheating starting out so close, just so this'll run quickly
+param_guess = np.array([6., 4.])
+learning_rate = 0.01
+#vt = np.array([0., 0.])
+
+for i in range(1000):
   # append the current epoch
   epoch_list.append(i)
-  # append the current guess
-  for j in range(bill_depth.size):
-    param_list.append(param_guess)
-    loss = fit_loss(param_guess, X[j,:], bill_depth[j])
-    loss_list.append(loss)
-    gradient = fit_grad(param_guess, X, bill_depth[j])
-    gradient_list.append(gradient)
-  
-    param_guess += -(gradient*learning_rate)
-
+  param_list.append(param_guess)
+  loss = fit_loss(param_guess, bill_length_X, body_mass_z)
+  loss_list.append(loss)
+  gradient = fit_grad(param_guess,  bill_length_X, body_mass_z)
+  gradient_list.append(gradient)
+ 
+  param_guess += -(gradient * learning_rate)
+ 
 print(f"Final param guess was {param_guess}")
 ```
 
 ```{python}
+#| echo: false
 param_arr = np.array(param_list)
 gradient_arr = np.array(gradient_list)
+loss_arr = np.array(loss_list)
+```
+
+```{r}
+#| echo: false
+data.frame(py$param_arr) %>%
+  set_names(c("intercept", "slope")) %>%
+  mutate(epoch = 1:n(),
+         loss = py$loss_arr)->param_df
+```
+
+```{r}
+#| echo: false
+library(palmerpenguins)
+library(gganimate)
+penguins %>%
+  drop_na()%>%
+  mutate(bill_length_z = scale(bill_length_mm),
+         bill_depth_z = scale(bill_depth_mm),
+         body_mass_z = scale(body_mass_g))->penguins
+```
+
+```{r}
+param_df %>%
+  slice(1:500) %>%
+  ggplot(aes(group = epoch)) +
+    geom_point(data = penguins, 
+               aes(x = bill_length_z, y = body_mass_z),
+               group = NA)+
+    geom_abline(aes(slope = slope, intercept = intercept, color = loss)) +
+    theme(text = element_text(family = "serif", size = 16))+
+    transition_states(states = epoch)
+
+```
+
+## Even more complex
+
+```{python}
+body_mass = jnp.array(penguins.dropna()["body_mass_g"])
+bill_length = jnp.array(penguins.dropna()["bill_length_mm"])
+bill_depth = jnp.array(penguins.dropna()["bill_depth_mm"])
+flipper_length = jnp.array(penguins.dropna()["flipper_length_mm"])
+```
+
+```{python}
+body_mass_z = (body_mass-body_mass.mean())/body_mass.std()
+bill_length_z = (bill_length-bill_length.mean())/bill_length.std()
+bill_depth_z = (bill_depth-bill_depth.mean())/bill_depth.std()
+flipper_length_z = (flipper_length-flipper_length.mean())/flipper_length.std()
+```
+
+```{python}
+data = jnp.vstack([bill_length_z, bill_depth_z, flipper_length_z])
+```
+
+```{python}
+from jax import random
+from jax.nn import relu
+
+key = random.PRNGKey(42)
+subkeys = random.split(key, 3)
+
+layer_1 = random.uniform(key = subkeys[0], shape = (3,5))
+layer_2 = random.uniform(key = subkeys[1], shape = (5,5))
+layer_3 = random.uniform(key = subkeys[1], shape = (5,1))
+```
+
+```{python}
+#jnp.dot(relu(jnp.dot(data.T, layer_1)), layer_2).squeeze()
+```
+
+```{python}
+def estimate_mass(layers, data):
+  l0_out = jnp.dot(data.T, layers[0])
+  #l0_act = relu(l0_out)
+  l1_out = jnp.dot(l0_out, layers[1])
+  #l1_act = relu(l1_out)
+  estimate = jnp.dot(l1_out, layers[2])
+  #estimate = jnp.dot(jnp.dot(jnp.dot(data.T, layers[0]), layers[1]), layers[2])
+  return(estimate)
+
+def mass_loss(layers, data, body_mass_z):
+  estimate = estimate_mass(layers, data)
+  err = estimate.squeeze() - body_mass_z
+  sq_err = jnp.power(err, 2)
+  mean_sq_err = sq_err.mean()
+  return(mean_sq_err)
+
+mass_grad = grad(mass_loss, argnums = 0)
+```
+
+```{python}
+est_list = []
+loss_list = []
+
+key = random.PRNGKey(42)
+subkeys = random.split(key, 3)
+
+layer_1 = random.uniform(key = subkeys[0], shape = (3,5))
+layer_2 = random.uniform(key = subkeys[1], shape = (5,5))
+layer_3 = random.uniform(key = subkeys[2], shape = (5,1))
+
+learning_rate = 0.001
+for i in range(1000):
+  est = estimate_mass((layer_1, layer_2, layer_3), data)
+  loss = mass_loss((layer_1, layer_2, layer_3), data, body_mass_z)
+  est_list.append(est)
+  loss_list.append(loss)
+  
+  gradient = mass_grad((layer_1, layer_2, layer_3), data, body_mass_z)
+  layer_1 += -(gradient[0] * learning_rate)
+  layer_2 += -(gradient[1] * learning_rate)
+  layer_3 += -(gradient[2] * learning_rate)
+
+```
+
+```{python}
+loss_arr = np.array(loss_list)
+est_arr = np.array(est_list)
+```
+
+```{r}
+data.frame(py$est_arr) %>%
+  mutate(epoch = 1:n()) %>%
+  pivot_longer(starts_with("X")) -> fits
+```
+
+```{r}
+library(palmerpenguins)
+library(gganimate)
+penguins %>%
+  drop_na() %>%
+  mutate(body_mass_z = scale(body_mass_g)) %>%
+  select(body_mass_z, species) %>%
+  mutate(name = paste0("X", 1:333)) -> real_data
+```
+
+```{r}
+fits %>%
+  left_join(real_data) %>%
+  filter(epoch %% 5 == 0) %>%
+  ggplot(aes(body_mass_z, value))+
+    geom_abline(intercept = 0, slope = 1, color = "grey")+
+    geom_point(aes(color = species)) +
+    theme(text = element_text(family = "serif", size = 16))+
+    scale_color_bright()+
+    transition_states(states = epoch)
+
+```
+
+## Categorical prediction
+
+```{python}
+from jax.nn import one_hot, softmax
+```
+
+```{python}
+unique_species = set(penguins.dropna()["species"])
+species_to_index = {s:idx for idx, s in enumerate(unique_species)}
+species_index = np.array([species_to_index[s] for s in penguins.dropna()["species"]])
+species_arr = jnp.array(species_index)
+species_one_hot = one_hot(species_arr, 3)
+```
+
+```{python}
+data = jnp.vstack([bill_length_z, bill_depth_z, flipper_length_z, body_mass_z])
+data_idx = np.array(list(range(data.shape[1])))
+n_train = int(np.floor(data.shape[1] * 0.8))
+train_idx = np.random.choice(list(range(data.shape[1])), size = n_train)
+test_idx = [x for x in list(range(data.shape[1])) if not x in train_idx]
+
+data_train = data[:, train_idx]
+data_test = data[:, test_idx]
+
+label_train = species_one_hot[train_idx,]
+label_test = species_one_hot[test_idx,]
+
+species_index_train = species_index[train_idx]
+species_index_test = species_index[test_idx]
+```
+
+```{python}
+label_train.shape
+```
+
+```{python}
+def estimate_species(layers, biases, data):
+  l0_out = jnp.dot(data.T, layers[0]) + biases[0]
+  l0_act = relu(l0_out)
+  l1_out = jnp.dot(l0_out, layers[1]) + biases[1]
+  l1_act = relu(l1_out)
+  l2_out = jnp.dot(l1_out, layers[2]) + biases[2]
+  estimate = softmax(l2_out, axis = -1)
+  #estimate = jnp.dot(jnp.dot(jnp.dot(data.T, layers[0]), layers[1]), layers[2])
+  return(estimate)
+
+def estimate_loss(layers, biases, data, species_one_hot):
+  est = estimate_species(layers, biases, data)
+  loss = -1 * (jnp.log(est) * species_one_hot).sum()
+  return(loss)
+
+def accuracy(est, species_index):
+  acc = sum(est.argmax(1) == species_index)/species_index.size
+  return(acc)
+
+estimate_grad = grad(estimate_loss, argnums = (0,1))
+```
+
+```{python}
+key = random.PRNGKey(42)
+
+
+layer_1 = random.uniform(key = subkeys[0], shape = (4,5))
+biases_1 = random.uniform(key = subkeys[1], shape = (5,))
+layer_2 = random.uniform(key = subkeys[2], shape = (5,5))
+biases_2 = random.uniform(key = subkeys[3], shape = (5,))
+layer_3 = random.uniform(key = subkeys[4], shape = (5,3))
+biases_3 = random.uniform(key = subkeys[5], shape = (3,))
+
+epochs = 900
+learning_rate = 0.001
+train_loss_list = []
+test_loss_list = []
+
+train_acc_list = []
+test_acc_list = []
+
+
+for i in range(epochs):
+  est = estimate_species((layer_1, layer_2, layer_3),
+                         (biases_1, biases_2, biases_3),
+                          data_train)
+  train_loss = estimate_loss((layer_1, layer_2, layer_3),
+                       (biases_1, biases_2, biases_3),
+                       data_train, label_train)
+  train_loss_list.append(train_loss)
+  train_acc = accuracy(est, species_index_train)
+  train_acc_list.append(train_acc)
+  
+  test_est =  estimate_species((layer_1, layer_2, layer_3),
+                         (biases_1, biases_2, biases_3),
+                          data_test)
+  test_loss = estimate_loss((layer_1, layer_2, layer_3),
+                       (biases_1, biases_2, biases_3),
+                       data_test, label_test)
+  test_loss_list.append(test_loss)
+  test_acc = accuracy(test_est, species_index_test)
+  test_acc_list.append(test_acc)
+  
+  
+  gradient = estimate_grad((layer_1, layer_2, layer_3),
+                           (biases_1, biases_2, biases_3),
+                            data_train, label_train)
+  layer_1 += -(learning_rate * gradient[0][0])
+  layer_2 += -(learning_rate * gradient[0][1])
+  layer_3 += -(learning_rate * gradient[0][2])
+  biases_1 += -(learning_rate * gradient[1][0])
+  biases_2 += -(learning_rate * gradient[1][1])
+  biases_3 += -(learning_rate * gradient[1][2])
+
+```
+
+```{python}
+train_acc_arr = np.array(train_acc_list)
+test_acc_arr = np.array(test_acc_list)
+```
+
+```{r}
+plot(py$train_acc_arr)
+```
+
+```{python}
+train_loss_arr = np.array(train_loss_list)
+```
+
+```{r}
+py$train_loss_arr[900:1000] * 0.001
 ```
