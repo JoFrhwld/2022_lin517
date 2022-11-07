@@ -257,7 +257,7 @@ france_capital = france_vec + capitalness_vec
 print(tabulate(wv.most_similar(france_capital)))
 ```
 
-## Visualizing 
+## Visualizing
 
 In order to *visualize* data from the word vectors, we need to do some "dimensionality reduction" (a topic for another lecture). Bit here's some basic code to do it.
 
@@ -336,6 +336,10 @@ projections = tsne.fit_transform(lingsim_v)
 ```
 
 ```{python}
+#| column: page
+#| fig-align: center
+#| fig-width: 10
+#| fig-height: 10
 fig = px.scatter(
     projections, 
     # 0 and 1 refer to the columns of
@@ -346,7 +350,8 @@ fig = px.scatter(
     # as the number of words
     size = np.zeros(len(ling_similar)),
     # plot the text of each word.
-    text = list(ling_similar)
+    text = list(ling_similar),
+    width=800, height=800
 )
 fig.show()
 ```
@@ -420,10 +425,13 @@ vocab = model.wv.index_to_key
 ```
 
 ```{python}
+#| column: body
 fig = px.scatter(
     projections, 
     x=0, y=1,
-    hover_name = np.array(vocab)
+    hover_name = np.array(vocab),
+    width=800, 
+    height=800
 )
 fig.show()
 ```
