@@ -38,7 +38,10 @@ website:
             contents:
               - href: "lectures/word_vectors/01_concept.qmd"
               - href: "lectures/word_vectors/02_vectors_examples.qmd"
-              - href: "lectures/word_vectors/03_word2vec.qmd"              
+              - href: "lectures/word_vectors/03_word2vec.qmd"
+          - section: "Neural Networks"
+            contents:
+              - href: "lectures/gradient_descent/01_gradient_descent.qmd"
           - section: "Models"
             contents:
               - href: "lectures/evaluation/index.qmd"

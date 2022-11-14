@@ -357,7 +357,7 @@ tf_idf = tf * idf[:, np.newaxis]
 After all of this, we have a measure for each word within each book that balances out its frequency in *this* book and its appearance frequency across all books.
 
 | tf                                      | idf                                   | tf-idf            |
-|----------------------------|---------------------------|-----------------|
+|-----------------------------------------|---------------------------------------|-------------------|
 | Frequent word in this book (large tf)   | Appears in most books (small idf)     | Mediocre tf-idf   |
 | Infrequent word in this book (small tf) | Appears in most books (small idf)     | Very small tf-idf |
 | Frequent word in this book (large tf)   | Appears in very few books (large idf) | Large tf-idf      |

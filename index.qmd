@@ -7,7 +7,7 @@ listing:
   sort: "date"
   date-format: "YYYY-MM-DD"
   categories: true
-  fields: [date, file-modified, title, categories]
+  fields: [date, title, categories]
 ---
 
 Course materials for Fall 2022's Natural Language Processing Course at University of Kentucky.

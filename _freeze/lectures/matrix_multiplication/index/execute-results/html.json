@@ -1,0 +1,11 @@
+{
+  "hash": "2a472c06cb9f6d2eaf913d92bf3d96d2",
+  "result": {
+    "markdown": "---\ntitle: \"Matrix Multiplication\"\nauthor: \"Josef Fruehwald\"\neditor: visual\n---\n\nIn the lecture notes on [gradient descent](../gradient_descent/01_gradient_descent.qmd), we already saw the use of matrix multiplication used to do linear regression, and I framed it as a kind of extension of dot products. Let's\n\n::: {.cell execution_count=1}\n``` {.python .cell-code}\nimport numpy as np\n```\n:::\n\n\n::: {.cell execution_count=2}\n``` {.python .cell-code}\nfoot_in_tocm = np.array([[2.54 * 12], \n                         [2.54]])\nfoot_in_tocm                         \n```\n\n::: {.cell-output .cell-output-display execution_count=2}\n```\narray([[30.48],\n       [ 2.54]])\n```\n:::\n:::\n\n\n::: {.cell execution_count=3}\n``` {.python .cell-code}\nheights_ft = np.array([[5,10],\n                       [5, 11],\n                       [5, 4]])\n```\n:::\n\n\n::: {.cell execution_count=4}\n``` {.python .cell-code}\nheights_ft[1, ]\n```\n\n::: {.cell-output .cell-output-display execution_count=4}\n```\narray([ 5, 11])\n```\n:::\n:::\n\n\n::: {.cell execution_count=5}\n``` {.python .cell-code}\nnp.dot(heights_ft[1, ], foot_in_tocm)\n```\n\n::: {.cell-output .cell-output-display execution_count=5}\n```\narray([180.34])\n```\n:::\n:::\n\n\n::: {.cell execution_count=6}\n``` {.python .cell-code}\nnp.dot(heights_ft, foot_in_tocm)\n```\n\n::: {.cell-output .cell-output-display execution_count=6}\n```\narray([[177.8 ],\n       [180.34],\n       [162.56]])\n```\n:::\n:::\n\n\n::: {.cell execution_count=7}\n``` {.python .cell-code}\nheights_ft @ foot_in_tocm\n```\n\n::: {.cell-output .cell-output-display execution_count=7}\n```\narray([[177.8 ],\n       [180.34],\n       [162.56]])\n```\n:::\n:::\n\n\n::: {.cell execution_count=8}\n``` {.python .cell-code}\nfoot_in_foo = np.array([[30, 60],\n                        [2.54, 5]])\n```\n:::\n\n\n::: {.cell execution_count=9}\n``` {.python .cell-code}\nheights_ft @ foot_in_foo\n```\n\n::: {.cell-output .cell-output-display execution_count=9}\n```\narray([[175.4 , 350.  ],\n       [177.94, 355.  ],\n       [160.16, 320.  ]])\n```\n:::\n:::\n\n\n",
+    "supporting": [
+      "index_files"
+    ],
+    "filters": [],
+    "includes": {}
+  }
+}
