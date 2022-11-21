@@ -261,4 +261,4 @@ First, a nifty thing is that the matrices we created to convert one penguin's da
 np.array(body_meas)[0:6, ] @ to_hidden_layer @ to_output
 ```
 
-The second thing to note is that these numbers we just got, based on random weights in the matrices, are obviously bad. But, they can be improved with [gradient descent]("../gradient_descent/01_gradient_descent.qmd")!
+The second thing to note is that these numbers we just got, based on random weights in the matrices, are obviously bad. But, they can be improved with [gradient descent](%22../gradient_descent/01_gradient_descent.qmd%22)!

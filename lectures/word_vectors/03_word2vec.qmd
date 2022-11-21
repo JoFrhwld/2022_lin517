@@ -18,7 +18,7 @@ When we built term-context matrices, the values that went into each cell of the 
 With these two windows of context around the target word, we'd go in and fill in the term-context matrix with the counts of every word that appeared in the context of `monster`. I'm also going to fill in some made up numbers for the word `fiend`.
 
 |           | `grabbed` | `the` | `wretch` | `whom` | `had` | `that` | `he` | `was` | `i` | `said` | `lurched` |
-|------|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|-----:|
+|-----------|----------:|------:|---------:|-------:|------:|-------:|-----:|------:|----:|-------:|----------:|
 | ...       |           |       |          |        |       |        |      |       |     |        |           |
 | `monster` |         0 |     2 |        1 |      1 |     1 |      1 |    1 |     1 |   2 |      1 |         0 |
 | `fiend`   |         1 |     1 |        0 |      0 |     1 |      1 |    2 |     1 |   0 |      0 |         2 |
