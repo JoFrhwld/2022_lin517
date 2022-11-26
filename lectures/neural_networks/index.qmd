@@ -359,7 +359,7 @@ fig4.show()
 
 ### Label Coding
 
-The output layer of the neural network is going to have 5 nodes, one for each vowel, and the values in each node will be the probability that the vowel it's classifying belongs to the specific vowel class. Let's say the specific token was [[Face]{.smallcaps}]{style="font-variant: small-caps;"} vowel. The output and the *desired* output might look like this:
+The output layer of the neural network is going to have 5 nodes, one for each vowel, and the values in each node will be the probability that the vowel it's classifying belongs to the specific vowel class. Let's say the specific token was [Face]{.smallcaps} vowel. The output and the *desired* output might look like this:
 
                           iy      i   ey      e     ae
     model output:    [ 0.025  0.025  0.9  0.025  0.025]
@@ -534,6 +534,28 @@ loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 loss_fn(y_true=y_train[0:3], y_pred=raw_output)
 ```
 
+There are a lot of loss functions available in TensorFlow, and they're all just kind of listed here: <https://www.tensorflow.org/api_docs/python/tf/keras/losses>
+
+Here's some rules of thumb for deciding on a specific loss function
+
++----------------------+----------------------------------+----------------------------------+
+| You're predicting... | which is coded as...             | so use...                        |
++======================+==================================+==================================+
+| Multiple categories  | integers (e.g. `[0, 3, 1, 2, 2]` | Sparse Categorical Cross Entropy |
++----------------------+----------------------------------+----------------------------------+
+| Multiple categories  | one hot encoding (e.g.           | Categorical Cross Entropy        |
+|                      |                                  |                                  |
+|                      |     [[1, 0, 0, 0],               |                                  |
+|                      |      [0, 0, 0, 1],               |                                  |
+|                      |      [0, 1, 0, 0],               |                                  |
+|                      |      [0, 0, 1, 1],               |                                  |
+|                      |      [0, 0, 1, 0]]               |                                  |
++----------------------+----------------------------------+----------------------------------+
+| A binary outcome     | A `0` or a `1`                   | Binary Cross Entropy             |
++----------------------+----------------------------------+----------------------------------+
+| A continuous value   | A numeric value                  | Mean Squared Error               |
++----------------------+----------------------------------+----------------------------------+
+
 ### Optimizer
 
 Next, we need to decide on the "optimizer" we're going to use. On every iteration, the model is going to estimate the gradient of the loss for every model parameter. The optimizer controls *how* that gradient is used. A popular one is the Adam optimizer.
@@ -544,17 +566,27 @@ optim_fn = tf.keras.optimizers.Adam()
 
 ### Training the Model!
 
+First, we need to "compile" the model, telling it which optimizer and loss function we want to use, as well as any additional metrics we want it to keep track of as it trains.
+
 ```{python}
 model.compile(optimizer=optim_fn,
               loss=loss_fn,
               metrics=['accuracy'])
 ```
 
+Then, we fit the model, telling it to use the training data, and how many epochs to train for. I'm also telling the model to automatically select out 20% of the training data to use as a "validation" dataset. The model will see how well it does on the validation data after every epoch, but won't use it to actually train on.
+
+All of the updated weights are kept inside the `model` object. I'm assigning the ouput to `history`, which will now contain a dictionary of how of the losses and metrics changed after each epoch.
+
 ```{python}
 history = model.fit(X_train, y_train, 
                     epochs=500, verbose = 0,
                     validation_split = 0.2)
 ```
+
+### Visualizing and evaluating the model
+
+So, how'd we do? We can look at some plots to see.
 
 ```{python}
 training_history = pd.DataFrame.from_dict(history.history)
@@ -566,13 +598,72 @@ training_history["epoch"] = list(range(nrow))
 ```
 
 ```{python}
-loss_plot = px.line(training_history, x = "epoch", y = ["loss", "val_loss"])
+loss_plot = px.line(training_history, x = "epoch", y = ["loss", "val_loss"], title = "loss over epochs")
 loss_plot.show()
 ```
 
 ```{python}
-acc_plot = px.line(training_history, x = "epoch", y = ["accuracy", "val_accuracy"])
+acc_plot = px.line(training_history, x = "epoch", y = ["accuracy", "val_accuracy"], title ="accuracy over epochs")
 acc_plot.show()
+```
+
+To *really* evaluate how well we've done, we'll need to compare these accuracy measures to some baseline, wrong models. Here's some options:
+
+1.  Random choice out of 5 labels.
+2.  Choose the most frequent label
+3.  Randomly scramble the labels.
+
+The random choice out of 5 labels would be 1/5 = 0.2.
+
+```{python}
+random_choice = 1/5
+random_choice
+```
+
+```{python}
+# getting probabilty of most frequent
+from collections import Counter
+Counter(y_train)
+```
+
+```{python}
+most_common_prob = Counter(y_train).most_common()[0][1]/len(y_train)
+most_common_prob
+```
+
+```{python}
+# getting the accuracy of just shuffling the labels
+shuff_array = np.copy(y_train)
+n_shuffle = 1000
+shuff_total = 0
+for x in range(n_shuffle):
+  np.random.shuffle(shuff_array)
+  shuff_total += (shuff_array == y_train).mean()
+
+shuff_mean = shuff_total/n_shuffle
+shuff_mean
+```
+
+```{python}
+acc_plot_comp = (px.line(training_history, 
+                         x = "epoch", 
+                         y = ["accuracy", "val_accuracy"], 
+                         title ="accuracy over epochs")
+                   .update_yaxes(range=[0, 1])
+                   .add_hline(y = random_choice, 
+                              line_color = "steelblue", 
+                              annotation_text="random choice", 
+                              annotation_position = "top left")
+                   .add_hline(y = most_common_prob, 
+                              line_color = "firebrick",
+                              annotation_text="most common label", 
+                              annotation_position = "top left")
+                    .add_hline(y = shuff_mean,
+                               line_color = "green",
+                               annotation_text="label shuffle",
+                               annotation_position = "top left")
+                    )
+acc_plot_comp.show()
 ```
 
 ```{python}
@@ -581,7 +672,9 @@ test_pred_int = tf.math.argmax(test_pred, axis = 1).numpy()
 (test_pred_int == y_test).mean()
 ```
 
-## More Nodes?
+## More Layers?
+
+Would adding more layers improve the accuracy?
 
 ```{python}
 model2 = tf.keras.models.Sequential([
@@ -610,6 +703,79 @@ training_history2["epoch"] = range(500)
 ```
 
 ```{python}
-acc_plot2 = px.line(training_history2, x = "epoch", y = ["accuracy", "val_accuracy"])
-acc_plot2.show()
+acc_plot_comp2 = (px.line(training_history2, 
+                          x = "epoch", 
+                          y = ["accuracy", "val_accuracy"], 
+                          title ="accuracy over epochs")
+                    .update_yaxes(range=[0, 1])
+                    .add_hline(y = random_choice, 
+                               line_color = "steelblue", 
+                               annotation_text="random choice", 
+                               annotation_position = "top left")
+                    .add_hline(y = most_common_prob, 
+                               line_color = "firebrick",
+                               annotation_text="most common label", 
+                               annotation_position = "top left")
+                     .add_hline(y = shuff_mean,
+                                line_color = "green",
+                                annotation_text="label shuffle",
+                                annotation_position = "top left")
+                     )
+acc_plot_comp2.show()
 ```
+
+
+### Dropout?
+
+```{python}
+model3 = tf.keras.models.Sequential([
+  tf.keras.layers.Dense(100, input_shape=(4,), activation = "relu"),
+  tf.keras.layers.Dropout(0.5),
+  tf.keras.layers.Dense(100, activation='relu'),
+  tf.keras.layers.Dropout(0.5),
+  tf.keras.layers.Dense(100, activation='relu'),
+  tf.keras.layers.Dropout(0.5),
+  tf.keras.layers.Dense(100, activation='relu'),
+  tf.keras.layers.Dropout(0.5),
+  tf.keras.layers.Dense(5)
+])
+```
+
+
+```{python}
+model3.compile(optimizer=optim_fn,
+              loss=loss_fn,
+              metrics=['accuracy'])
+```
+
+```{python}
+history3 = model3.fit(X_train, y_train, 
+                    epochs=500, verbose = 0,
+                    validation_split = 0.2)
+```
+
+
+```{python}
+training_history3 = pd.DataFrame.from_dict(history3.history)
+training_history3["epoch"] = range(500)
+acc_plot_comp3 = (px.line(training_history3, 
+                          x = "epoch", 
+                          y = ["accuracy", "val_accuracy"], 
+                          title ="accuracy over epochs")
+                    .update_yaxes(range=[0, 1])
+                    .add_hline(y = random_choice, 
+                               line_color = "steelblue", 
+                               annotation_text="random choice", 
+                               annotation_position = "top left")
+                    .add_hline(y = most_common_prob, 
+                               line_color = "firebrick",
+                               annotation_text="most common label", 
+                               annotation_position = "top left")
+                     .add_hline(y = shuff_mean,
+                                line_color = "green",
+                                annotation_text="label shuffle",
+                                annotation_position = "top left")
+                     )
+acc_plot_comp3.show()
+```
+
