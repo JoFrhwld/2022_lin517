@@ -42,6 +42,9 @@ website:
           - section: "Neural Networks"
             contents:
               - href: "lectures/gradient_descent/01_gradient_descent.qmd"
+              - href: "lectures/matrix_multiplication/index.qmd"
+              - href: "lectures/neural_networks/index.qmd"
+              - href: "lectures/neural_networks/word_embeddings.qmd"
           - section: "Models"
             contents:
               - href: "lectures/evaluation/index.qmd"
